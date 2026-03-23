@@ -30,8 +30,13 @@ yarn-error.log*
 # vercel
 .vercel
 
-# cursor IDE
+# cursor IDE & agent tooling
 .cursor/
+.agent/
+.agents/
+.claude/
+skills/
+skills-lock.json
 
 # typescript
 *.tsbuildinfo
