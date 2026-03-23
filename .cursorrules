@@ -1,0 +1,128 @@
+# ═══════════════════════════════════════════════════════════════
+# ArchDesk — Cursor AI Rules
+# Architecture & Design SaaS for Hubbali, Karnataka
+# ═══════════════════════════════════════════════════════════════
+
+## Project Overview
+ArchDesk is a vertical SaaS platform for architecture and interior design
+firms in Tier-2 Indian cities (starting Hubbali, Karnataka). Users are
+architects, draftsmen, site managers, and their clients.
+
+## Tech Stack (never suggest alternatives)
+- Next.js 14 with App Router (TypeScript, strict mode)
+- Tailwind CSS + shadcn/ui for all UI components
+- Clerk for authentication and organisation management
+- Prisma ORM + Supabase Postgres for database
+- Supabase Storage for files (drawings, renders, site photos)
+- Zustand for client state, TanStack React Query for server state
+- react-hook-form + Zod for all forms and validation
+- Razorpay for payments (India-first, UPI support)
+- Resend for transactional email
+- @react-pdf/renderer for PDF invoice generation
+- Vercel for deployment
+
+## Architecture Rules
+- Use Server Components by default. Add "use client" ONLY when needed
+  (event handlers, hooks, browser APIs, interactivity)
+- API routes live in /app/api/ as Next.js Route Handlers
+- All DB access goes through Prisma — never raw SQL
+- Protect all dashboard routes via Clerk middleware
+- Use Supabase RLS for row-level data isolation per firm
+- Never expose API keys or secrets in client components
+
+## Code Style
+- TypeScript strict mode — every function, prop, return type must be typed
+- Async/await everywhere — never .then() chains
+- Try/catch in all server actions and API routes
+- Return typed responses: { data, error } pattern
+- Named exports for components, default export for pages
+- File naming: kebab-case files, PascalCase components
+- Co-locate types in /types/index.ts for shared types
+
+## Indian Market Specifics (CRITICAL)
+- Currency: INR only — always format as ₹ with Indian numbering
+  CORRECT:   ₹1,05,000  (Indian: lakh system)
+  INCORRECT: ₹105,000   (Western format — never use)
+- Indian number formatter: new Intl.NumberFormat('en-IN', { style:'currency', currency:'INR' })
+- Dates: DD/MM/YYYY format throughout the app
+- GST: 18% on architecture services — always show GST breakup on invoices
+- Phone numbers: 10-digit Indian mobile numbers (+91 prefix)
+- Cities: Hubbali, Dharwad, Belgaum (now Belagavi), Davangere, Mysuru
+
+## Domain Knowledge — Architecture Firm Workflow
+Project stages (in order):
+  CONCEPT → SCHEMATIC → DESIGN_DEV → WORKING_DRAWINGS → EXECUTION → COMPLETED
+
+Drawing types: PLAN | ELEVATION | SECTION | RENDER | BOQ | OTHER
+Drawing statuses: PENDING_REVIEW | APPROVED | REVISION_REQUESTED
+
+Billing is milestone-based (tied to project stages):
+  - Retainer (on signing)
+  - Schematic fee
+  - Design development fee
+  - Working drawings fee
+  - Site supervision fees
+  - Completion fee
+
+Lead pipeline stages:
+  NEW → CONTACTED → SITE_VISIT → PROPOSAL_SENT → NEGOTIATION → WON → LOST
+
+## Component Patterns
+When generating any component:
+1. Define TypeScript interface at the top of the file
+2. Use shadcn/ui primitives first, build custom only if needed
+3. Include Skeleton loading state (use shadcn Skeleton)
+4. Include empty state with descriptive message
+5. Include error state with retry option
+6. Mobile-responsive with Tailwind breakpoints (mobile-first)
+7. Add toast notifications (shadcn Sonner) for all user actions
+
+## Folder Conventions
+/app/(dashboard)/[feature]/page.tsx     — list/overview page
+/app/(dashboard)/[feature]/[id]/page.tsx — detail page
+/components/[feature]/[FeatureName].tsx  — feature component
+/hooks/use[Feature].ts                   — React Query hooks
+/lib/[service].ts                        — service utilities
+/types/index.ts                          — shared TypeScript types
+
+## Database Access Pattern
+// Always use this pattern for server components
+import { db } from "@/lib/db"
+import { auth } from "@clerk/nextjs/server"
+
+const { userId } = auth()
+const user = await db.user.findUnique({ where: { clerkId: userId } })
+const data = await db.[model].findMany({
+  where: { firmId: user.firmId },  // ALWAYS scope to firmId
+  include: { ... }
+})
+
+## Naming Conventions
+- DB models: PascalCase (Project, Drawing, Invoice)
+- Prisma relations: camelCase (project.drawings, user.firm)
+- API routes: /api/[resource]/[id] REST style
+- Zustand stores: use[Feature]Store (useProjectStore)
+- React Query keys: ['projects', firmId] arrays
+
+## When Generating Forms
+Always use this stack:
+  const form = useForm<z.infer<typeof schema>>({
+    resolver: zodResolver(schema),
+    defaultValues: { ... }
+  })
+Include field-level error messages below each input.
+Use shadcn FormField, FormItem, FormLabel, FormMessage.
+
+## Security Rules
+- Validate Clerk session on every API route
+- Check firmId ownership before any DB read/write
+- Sanitize file uploads: check MIME type and file size
+- Validate Razorpay webhook signatures
+- Rate limit public endpoints (client portal)
+
+## Performance
+- Use Next.js Image component for all images
+- Paginate lists with cursor-based pagination (not offset)
+- Use React Query's staleTime: 1000 * 60 for project data
+- Compress images client-side before Supabase upload
+  (use browser-image-compression package)

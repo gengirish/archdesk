@@ -1,0 +1,487 @@
+// ArchDesk — Prisma Schema
+// Run: npx prisma db push   (to sync with Supabase)
+// Run: npx prisma studio    (to browse data)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─────────────────────────────────────────────
+// FIRM (tenant root — every query scopes to this)
+// ─────────────────────────────────────────────
+model Firm {
+  id          String   @id @default(cuid())
+  name        String
+  logo        String?
+  gstNumber   String?
+  phone       String
+  email       String
+  address     String?
+  city        String   @default("Hubbali")
+  state       String   @default("Karnataka")
+  brandColor  String   @default("#E8A045")
+  website     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users    User[]
+  clients  Client[]
+  projects Project[]
+  leads    Lead[]
+  vendors  Vendor[]
+
+  @@map("firms")
+}
+
+// ─────────────────────────────────────────────
+// USER
+// ─────────────────────────────────────────────
+model User {
+  id      String @id @default(cuid())
+  clerkId String @unique
+  firmId  String
+  firm    Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  name   String
+  email  String
+  phone  String?
+  role   UserRole @default(ARCHITECT)
+  avatar String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projectMembers ProjectMember[]
+  siteUpdates    SiteUpdate[]
+  drawingComments DrawingComment[]
+  leadActivities LeadActivity[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  OWNER
+  ARCHITECT
+  DRAFTSMAN
+  SITE_MANAGER
+  ADMIN
+}
+
+// ─────────────────────────────────────────────
+// CLIENT
+// ─────────────────────────────────────────────
+model Client {
+  id     String @id @default(cuid())
+  firmId String
+  firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  name    String
+  phone   String
+  email   String?
+  address String?
+  city    String?
+  notes   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projects Project[]
+
+  @@map("clients")
+}
+
+// ─────────────────────────────────────────────
+// PROJECT
+// ─────────────────────────────────────────────
+model Project {
+  id       String @id @default(cuid())
+  firmId   String
+  firm     Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id])
+
+  name        String
+  description String?
+  type        ProjectType
+  stage       ProjectStage @default(CONCEPT)
+  status      ProjectStatus @default(ACTIVE)
+
+  budget    Float?
+  area      Float?   // sqft
+  location  String?
+  startDate DateTime?
+  deadline  DateTime?
+
+  // Token for client portal (public, no auth)
+  clientToken String @unique @default(cuid())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  team        ProjectMember[]
+  drawings    Drawing[]
+  milestones  Milestone[]
+  siteUpdates SiteUpdate[]
+  issues      SiteIssue[]
+
+  @@map("projects")
+}
+
+enum ProjectType {
+  RESIDENTIAL
+  COMMERCIAL
+  INDUSTRIAL
+  INTERIOR
+  LANDSCAPE
+  INSTITUTIONAL
+}
+
+enum ProjectStage {
+  CONCEPT
+  SCHEMATIC
+  DESIGN_DEV
+  WORKING_DRAWINGS
+  EXECUTION
+  COMPLETED
+}
+
+enum ProjectStatus {
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+model ProjectMember {
+  id        String  @id @default(cuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User    @relation(fields: [userId], references: [id])
+  role      String  @default("Architect")
+
+  @@unique([projectId, userId])
+  @@map("project_members")
+}
+
+// ─────────────────────────────────────────────
+// DRAWINGS
+// ─────────────────────────────────────────────
+model Drawing {
+  id        String @id @default(cuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  name     String
+  type     DrawingType
+  fileUrl  String
+  fileSize Int?         // bytes
+  mimeType String?
+  version  Int          @default(1)
+  status   DrawingStatus @default(PENDING_REVIEW)
+
+  uploadedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  versions DrawingVersion[]
+  comments DrawingComment[]
+
+  @@map("drawings")
+}
+
+model DrawingVersion {
+  id        String  @id @default(cuid())
+  drawingId String
+  drawing   Drawing @relation(fields: [drawingId], references: [id], onDelete: Cascade)
+
+  version  Int
+  fileUrl  String
+  fileSize Int?
+  note     String?
+
+  createdAt DateTime @default(now())
+
+  @@map("drawing_versions")
+}
+
+model DrawingComment {
+  id        String  @id @default(cuid())
+  drawingId String
+  drawing   Drawing @relation(fields: [drawingId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?   @relation(fields: [userId], references: [id])
+
+  // For client comments (no user account)
+  clientName String?
+  content    String
+  isClient   Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@map("drawing_comments")
+}
+
+enum DrawingType {
+  PLAN
+  ELEVATION
+  SECTION
+  RENDER
+  BOQ
+  DETAIL
+  OTHER
+}
+
+enum DrawingStatus {
+  PENDING_REVIEW
+  APPROVED
+  REVISION_REQUESTED
+}
+
+// ─────────────────────────────────────────────
+// BILLING — MILESTONES & INVOICES
+// ─────────────────────────────────────────────
+model Milestone {
+  id        String  @id @default(cuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?
+  stage       ProjectStage
+  amount      Float         // base amount before GST
+  gstPercent  Float        @default(18)
+  dueDate     DateTime?
+
+  // Razorpay
+  razorpayLinkId  String?
+  razorpayLinkUrl String?
+
+  status    MilestoneStatus @default(UPCOMING)
+  paidAt    DateTime?
+  paidAmount Float?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  invoices Invoice[]
+
+  @@map("milestones")
+}
+
+model Invoice {
+  id          String    @id @default(cuid())
+  milestoneId String
+  milestone   Milestone @relation(fields: [milestoneId], references: [id])
+
+  invoiceNo   String          @unique  // e.g. INV-2024-001
+  baseAmount  Float
+  gstAmount   Float
+  totalAmount Float
+  pdfUrl      String?
+  notes       String?
+
+  status  InvoiceStatus @default(UNPAID)
+  paidAt  DateTime?
+
+  // Razorpay payment details
+  razorpayPaymentId String?
+  razorpayOrderId   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("invoices")
+}
+
+enum MilestoneStatus {
+  UPCOMING
+  DUE
+  UNPAID
+  PAID
+  OVERDUE
+}
+
+enum InvoiceStatus {
+  DRAFT
+  UNPAID
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+// ─────────────────────────────────────────────
+// SITE TRACKER
+// ─────────────────────────────────────────────
+model SiteUpdate {
+  id        String  @id @default(cuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?   @relation(fields: [userId], references: [id])
+
+  note        String?
+  photos      String[] // Supabase storage URLs
+  milestone   ProjectStage?
+  weather     String?
+
+  createdAt DateTime @default(now())
+
+  @@map("site_updates")
+}
+
+model SiteIssue {
+  id        String  @id @default(cuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String?
+  photos      String[]
+  severity    IssueSeverity @default(MEDIUM)
+  status      IssueStatus   @default(OPEN)
+  assignedTo  String?       // user name or team member
+
+  resolvedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("site_issues")
+}
+
+enum IssueSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum IssueStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+// ─────────────────────────────────────────────
+// LEADS CRM
+// ─────────────────────────────────────────────
+model Lead {
+  id     String @id @default(cuid())
+  firmId String
+  firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  name        String
+  phone       String
+  email       String?
+  address     String?
+  projectType ProjectType?
+  budget      Float?
+  area        Float?       // sqft
+  source      LeadSource   @default(OTHER)
+  stage       LeadStage    @default(NEW)
+  notes       String?
+  followUpAt  DateTime?
+
+  // Won lead → converted project
+  convertedProjectId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  activities LeadActivity[]
+
+  @@map("leads")
+}
+
+model LeadActivity {
+  id     String @id @default(cuid())
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  userId String?
+  user   User?  @relation(fields: [userId], references: [id])
+
+  type    ActivityType
+  note    String?
+
+  createdAt DateTime @default(now())
+
+  @@map("lead_activities")
+}
+
+enum LeadSource {
+  REFERRAL
+  INSTAGRAM
+  FACEBOOK
+  WALKIN
+  WEBSITE
+  HOUZZ
+  PHONE
+  OTHER
+}
+
+enum LeadStage {
+  NEW
+  CONTACTED
+  SITE_VISIT
+  PROPOSAL_SENT
+  NEGOTIATION
+  WON
+  LOST
+}
+
+enum ActivityType {
+  CALL
+  EMAIL
+  WHATSAPP
+  SITE_VISIT
+  PROPOSAL
+  NOTE
+  STAGE_CHANGE
+}
+
+// ─────────────────────────────────────────────
+// VENDORS
+// ─────────────────────────────────────────────
+model Vendor {
+  id     String @id @default(cuid())
+  firmId String
+  firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  name     String
+  category VendorCategory
+  phone    String
+  email    String?
+  address  String?
+  city     String         @default("Hubbali")
+  gst      String?
+  notes    String?
+  rating   Int?           // 1-5
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("vendors")
+}
+
+enum VendorCategory {
+  CONTRACTOR
+  TILES
+  STEEL
+  WOOD
+  GLASS
+  ELECTRICAL
+  PLUMBING
+  PAINT
+  HARDWARE
+  FURNITURE
+  LANDSCAPING
+  OTHER
+}

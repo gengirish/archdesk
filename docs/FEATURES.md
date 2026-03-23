@@ -1,0 +1,306 @@
+# ArchDesk — Feature Documentation
+
+> Architecture & Design Project Management SaaS for Tier-2 Indian Cities
+
+---
+
+## Overview
+
+ArchDesk is a vertical SaaS platform purpose-built for architecture and interior design firms operating in Tier-2 Indian cities. The first target market is Hubbali-Dharwad, Karnataka.
+
+It replaces the fragmented workflow of WhatsApp groups, Excel sheets, and manual invoicing with a single unified platform covering the full project lifecycle — from lead enquiry to final payment collection.
+
+**Target users:** Firm owners, architects, draftsmen, site managers, and their clients.
+
+---
+
+## Core Modules
+
+### 1. Dashboard (`/dashboard`)
+
+The central command centre for the firm. Shows real-time metrics at a glance.
+
+**Key metrics displayed:**
+- Active project count
+- Monthly revenue with month-over-month growth percentage
+- Pending drawing approvals
+- Active leads and pipeline value (in lakhs/crores)
+- Overdue milestone alerts
+
+**Additional views:**
+- Recent projects list with client name, budget, and current stage
+- Revenue summary with trend indicator
+- Project stage distribution breakdown (Concept through Completed)
+
+---
+
+### 2. Project Management (`/projects`)
+
+Full lifecycle tracking for architecture projects from first sketch to handover.
+
+**Project types supported:**
+- Residential
+- Commercial
+- Industrial
+- Interior
+- Landscape
+- Institutional
+
+**Project stages (sequential):**
+1. **Concept** — Initial brief, site analysis, rough sketches
+2. **Schematic Design** — Preliminary plans, massing studies
+3. **Design Development** — Detailed design, material selections
+4. **Working Drawings** — Construction-ready technical drawings
+5. **Execution** — Site construction phase
+6. **Completed** — Project handed over
+
+**Features:**
+- Grid and list view toggle
+- Search by project name
+- Filter by project type and stage
+- Each project card shows: client name, area (sqft), budget (INR), drawing count, milestone count, and location
+- Project status tracking: Active, On Hold, Completed, Cancelled
+- Team assignment with roles (Lead Architect, Draftsman, etc.)
+- Unique client portal token for each project (no login required for clients)
+
+**Data model:**
+- Linked to a client and a firm (multi-tenant)
+- Tracks budget, area in sqft, start date, deadline, and location
+- Has associated drawings, milestones, site updates, and site issues
+
+---
+
+### 3. Client Directory (`/clients`)
+
+Central registry of all clients the firm has worked with or is working with.
+
+**Features:**
+- Search by name or phone number
+- Client cards showing: name, phone (+91 format), email, city, and project count
+- Avatar with initials fallback
+- Each client links to their projects
+
+**Data captured:**
+- Name, phone (10-digit Indian mobile), email
+- Address and city
+- Free-text notes
+- Associated projects
+
+---
+
+### 4. Drawing Management (`/drawings`)
+
+Upload, version, review, and collaborate on architectural drawings.
+
+**Drawing types:**
+- Plan (floor plans, site plans)
+- Elevation (front, side, rear views)
+- Section (cross-sections)
+- Render (3D visualisations)
+- BOQ (Bill of Quantities)
+- Detail (construction details)
+- Other
+
+**Drawing statuses:**
+- **Pending Review** — Uploaded, awaiting architect/client review
+- **Approved** — Signed off, ready for next stage
+- **Revision Requested** — Changes needed, sent back to draftsman
+
+**Features:**
+- Blueprint-style preview grid
+- Version tracking (v1, v2, v3...)
+- File size display
+- Comment count per drawing
+- Comment system supporting both team members and clients (clients comment via portal without login, identified by name)
+- Drawing version history with notes
+
+**Storage:** Files stored in Supabase Storage with organised buckets (drawings, site-photos, renders, firm-assets).
+
+---
+
+### 5. Milestone Billing (`/billing`)
+
+India-specific billing system tied to project stages, with GST compliance built in.
+
+**Billing model:**
+Architecture fees are milestone-based, tied to project stages:
+1. Retainer (on signing)
+2. Schematic fee
+3. Design development fee
+4. Working drawings fee
+5. Site supervision fees
+6. Completion fee
+
+**Features:**
+- Summary cards: Total Billed, Collected, Outstanding, Collection Rate (%)
+- Collection rate progress bar
+- Full milestone table with: name, project, base amount, GST-inclusive amount, and payment status
+- Milestone statuses: Upcoming, Due, Unpaid, Paid, Overdue
+
+**GST compliance:**
+- Default 18% GST on architecture services
+- Every amount shows base + GST breakup
+- GST amount calculated automatically
+
+**Invoice generation:**
+- Auto-generated invoice numbers (e.g., `ARC-2026-001`)
+- PDF generation via `@react-pdf/renderer`
+- Tracks Razorpay payment ID and order ID
+
+**Payments:**
+- Razorpay integration with payment link generation
+- Supports UPI, cards, and net banking
+- SMS + WhatsApp + email payment reminders
+- Webhook signature verification for payment confirmation
+
+**Currency formatting:**
+- All amounts in INR with Indian numbering system
+- `₹1,05,000` (correct) — not `₹105,000` (western)
+- Short format for large amounts: `₹3.5L`, `₹1.5Cr`
+
+---
+
+### 6. Leads CRM (`/leads`)
+
+Track potential clients from first contact to project conversion.
+
+**Lead pipeline stages:**
+1. **New** — Fresh enquiry received
+2. **Contacted** — Initial call/message sent
+3. **Site Visit** — Physical site assessment done
+4. **Proposal Sent** — Quote/proposal delivered
+5. **Negotiation** — Terms being discussed
+6. **Won** — Converted to project
+7. **Lost** — Did not convert
+
+**Lead sources tracked:**
+- Referral
+- Instagram
+- Facebook
+- Walk-in
+- Website
+- Houzz
+- Phone call
+- Other
+
+**Features:**
+- Kanban board layout (5 active pipeline columns)
+- Lead cards showing: name, phone, project type, budget, and source
+- Won/Lost sections displayed separately below the pipeline
+- Pipeline value calculation (sum of budgets in active stages)
+- Activity tracking per lead (calls, emails, WhatsApp messages, site visits, proposals, notes, stage changes)
+- Follow-up date tracking
+- Lead-to-project conversion linking
+
+---
+
+### 7. Site Tracker (`/site-tracker`)
+
+Daily construction progress logging and issue management for active projects.
+
+**Site Updates:**
+- Timeline-style log entries
+- Each entry captures: project name, logged-by user, text note, photo count, weather conditions, and current construction milestone
+- Photos stored in Supabase Storage
+
+**Site Issues:**
+- Severity levels: Low, Medium, High, Critical
+- Issue statuses: Open, In Progress, Resolved, Closed
+- Fields: title, description, photos, assigned team member, resolved date
+- Colour-coded severity indicators
+
+**Use case:** Site managers log daily progress from the construction site. Architects and firm owners review remotely. Issues are tracked to resolution.
+
+---
+
+### 8. Vendor Directory (`/vendors`)
+
+Maintain a rated directory of local contractors, suppliers, and service providers.
+
+**Vendor categories:**
+Contractor, Tiles, Steel, Wood, Glass, Electrical, Plumbing, Paint, Hardware, Furniture, Landscaping, Other
+
+**Features:**
+- Search by vendor name
+- Filter by category
+- Vendor cards showing: name, category, phone, city, star rating (1-5)
+- GST number tracking for vendors with GST registration
+- Notes field for vendor-specific information
+
+**Local focus:** Default city is Hubbali. Covers vendors in Hubbali, Dharwad, Belagavi, Davangere, and Mysuru.
+
+---
+
+### 9. Settings (`/settings`)
+
+Firm profile and brand configuration.
+
+**Firm Profile:**
+- Firm name, GST number, phone, email
+- Office address and city
+- Website URL
+
+**Brand Customisation:**
+- Brand colour (default: `#E8A045` — ArchDesk gold)
+- Firm logo upload (PNG, SVG)
+- Brand settings apply to client portal and PDF invoices
+
+---
+
+## Architecture & Security
+
+### Multi-tenancy
+Every database query is scoped to `firmId`. A firm's data is completely isolated from other firms. Clerk manages authentication, and each user belongs to exactly one firm.
+
+### User Roles
+| Role | Description |
+|------|-------------|
+| Owner | Firm owner, full access |
+| Architect | Design team member |
+| Draftsman | Drawing production |
+| Site Manager | On-site construction oversight |
+| Admin | Administrative staff |
+
+### Authentication
+- Clerk handles sign-in/sign-up, session management, and user profiles
+- All dashboard routes are protected via Clerk middleware
+- Public routes: sign-in, sign-up, client portal, and webhook endpoints
+
+### Client Portal
+Each project has a unique `clientToken`. Clients access their project via `/portal/[token]` without needing a Clerk account. They can view drawings and leave comments identified by name.
+
+### API Design
+- RESTful routes under `/api/[resource]/[id]`
+- Typed responses using `{ data, error }` pattern
+- Clerk session validated on every request
+- Firm ownership checked before any read/write
+
+### Tech Stack
+| Layer | Technology |
+|-------|-----------|
+| Framework | Next.js 14 (App Router, TypeScript strict) |
+| UI | Tailwind CSS + shadcn/ui |
+| Auth | Clerk |
+| Database | Prisma ORM + Supabase Postgres |
+| File Storage | Supabase Storage |
+| Client State | Zustand |
+| Server State | TanStack React Query |
+| Forms | react-hook-form + Zod |
+| Payments | Razorpay (UPI, cards, net banking) |
+| Email | Resend |
+| PDF | @react-pdf/renderer |
+| Hosting | Vercel |
+
+---
+
+## Indian Market Specifics
+
+| Aspect | Implementation |
+|--------|---------------|
+| Currency | INR only, Indian numbering (lakhs/crores) |
+| Tax | 18% GST (CGST + SGST) on all invoices |
+| Dates | DD/MM/YYYY format |
+| Phone | +91 prefix, 10-digit validation |
+| Payments | Razorpay with UPI as primary method |
+| Cities | Hubbali, Dharwad, Belagavi, Davangere, Mysuru |
+| Language | English (en-IN locale) |

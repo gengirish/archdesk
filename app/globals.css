@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 222 47% 4%;
+    --foreground: 220 20% 88%;
+    --card: 224 40% 7%;
+    --card-foreground: 220 20% 88%;
+    --popover: 224 40% 7%;
+    --popover-foreground: 220 20% 88%;
+    --primary: 38 78% 59%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 224 30% 12%;
+    --secondary-foreground: 220 20% 60%;
+    --muted: 224 30% 12%;
+    --muted-foreground: 220 15% 45%;
+    --accent: 38 78% 59%;
+    --accent-foreground: 0 0% 0%;
+    --destructive: 0 84% 64%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 224 25% 15%;
+    --input: 224 25% 15%;
+    --ring: 38 78% 59%;
+    --radius: 0.25rem;
+
+    /* ArchDesk brand */
+    --archdesk-gold: #E8A045;
+    --archdesk-dark: #0A0C0F;
+    --archdesk-surface: #111318;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 2px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground));
+  }
+}
+
+@layer utilities {
+  /* Indian currency class */
+  .inr::before {
+    content: "₹";
+  }
+
+  /* Blueprint pattern for drawing placeholders */
+  .blueprint-bg {
+    background-color: hsl(224 40% 7%);
+    background-image:
+      linear-gradient(hsl(224 25% 15% / 0.5) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(224 25% 15% / 0.5) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+}
