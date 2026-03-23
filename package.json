@@ -40,11 +40,11 @@
     "date-fns": "^3.6.0",
     "lucide-react": "^0.363.0",
     "next": "14.1.4",
+    "razorpay": "^2.9.2",
     "react": "^18",
     "react-dom": "^18",
     "react-dropzone": "^14.2.3",
     "react-hook-form": "^7.51.0",
-    "razorpay": "^2.9.2",
     "resend": "^3.2.0",
     "sonner": "^1.4.41",
     "tailwind-merge": "^2.2.2",
@@ -53,6 +53,7 @@
     "zustand": "^4.5.2"
   },
   "devDependencies": {
+    "@flydotio/dockerfile": "^0.7.10",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
