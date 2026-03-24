@@ -33,6 +33,7 @@ The central command centre for the firm. Shows real-time metrics at a glance.
 - Recent projects list with client name, budget, and current stage
 - Revenue summary with trend indicator
 - Project stage distribution breakdown (Concept through Completed)
+- **Analytics** (`/analytics`, Enterprise): cash-flow KPIs, 12-month revenue vs invoiced, projects by stage/type, lead conversion, top clients, recent activity (uses `GET /api/dashboard/analytics` via TanStack Query)
 
 **API:** `GET /api/dashboard/stats` (summary KPIs), `GET /api/dashboard/analytics` (12-month revenue vs invoiced, stage/type breakdowns, lead conversion, top clients, cash flow, unified activity feed).
 

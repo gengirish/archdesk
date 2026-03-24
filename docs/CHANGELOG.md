@@ -1,5 +1,39 @@
 # ArchDesk — Changelog
 
+## 2026-03-24 — Placeholder elimination (all 17 placeholders resolved)
+
+### Wave 1 — Wire list pages to live data
+- Projects, Clients, Leads, Vendors pages now use TanStack Query hooks instead of hardcoded mock arrays
+- Drawings page aggregates across all projects via `useQueries` (new `hooks/useDrawings.ts`)
+- Billing page fetches milestones across all projects (new `hooks/useBilling.ts`)
+- Site Tracker page fetches site updates across all projects (new `hooks/useSiteTracker.ts`)
+- All pages have proper loading spinners and error states
+
+### Wave 2 — Create/Add forms with mutations
+- **New Project** dialog on `/projects` — form with client dropdown, project type select, budget, area, location; uses `useCreateProject` mutation
+- **Upload Drawing** dialog on `/drawings` — project select, name, type, file URL; inline mutation to project-scoped drawings API
+- **Add Client** dialog on `/clients` — name, phone, email, city; uses `useCreateClient` mutation
+- **Add Vendor** dialog on `/vendors` — name, category, phone, email, city, GST; uses `useCreateVendor` mutation
+- **Add Lead** dialog on `/leads` — name, phone, source, project type, budget; uses `useCreateLead` mutation
+- **Log Update** dialog on `/site-tracker` — project select, note, weather, milestone; inline mutation
+- **Settings** `/settings` fully wired — loads firm data via `GET /api/firm`, saves via `PATCH /api/firm`, controlled form inputs, brand color preview, logo file input
+- All forms show success/error toasts via Sonner
+
+### Wave 3 — Global UX + Feature Gating
+- **Global search** command palette (⌘K) in TopBar — searches across Projects, Clients, Leads with navigation
+- **Notifications dropdown** on bell icon — fetches recent activity from analytics API, shows relative timestamps
+- **Feature gate enforcement** on 5 Pro pages (Drawings, Site Tracker, Leads, Vendors, AI Estimator) using `FeatureGate` component
+- New `hooks/usePlan.ts` — returns current plan tier (hardcoded to `"free"` for demo, extensible to firm subscription)
+
+### Wave 4 — Analytics + Cleanup
+- **Analytics page** `/analytics` — cash flow summary, 12-month revenue bars, projects by stage/type, lead conversion rate, top clients table, recent activity feed
+- Added Analytics to sidebar with enterprise-tier gating
+- New `hooks/useAnalytics.ts` for dashboard analytics data
+- Wired Zustand `newProjectOpen` store state to projects dialog (replacing local useState)
+- Drawing cards show real image previews from `fileUrl` with graceful fallback to blueprint placeholder
+
+---
+
 ## 2026-03-24 — YC-ready feature buildout
 
 ### Foundation
@@ -23,6 +57,7 @@
 - Plan limits: Free (3 projects, 5 clients), Pro (unlimited), Enterprise (portal + teams + analytics)
 
 ### Architecture Improvements
+- Client directory (`/clients`) and vendor directory (`/vendors`) use `useClients` / `useVendors` with centered loading spinners (replaced page-level mock arrays)
 - Wired dashboard page to real API data with loading skeletons (replaced mock data)
 - Lead-to-project one-click conversion (creates Client + Project + auto stage change)
 - Consistent `{ data, error }` API response envelope across all routes

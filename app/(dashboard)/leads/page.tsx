@@ -1,14 +1,58 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Search, UserPlus, Phone } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+import { Plus, Search, UserPlus, Phone, Loader2 } from "lucide-react";
+import { LeadSource, ProjectType } from "@prisma/client";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { formatINRShort } from "@/lib/utils";
+import type { LeadStage } from "@/types";
+import { FeatureGate } from "@/components/feature-gate";
+import { usePlan } from "@/hooks/usePlan";
+import { useLeads, useCreateLead } from "@/hooks/useLeads";
 
-type LeadStage = "NEW" | "CONTACTED" | "SITE_VISIT" | "PROPOSAL_SENT" | "NEGOTIATION" | "WON" | "LOST";
+const LEAD_SOURCES: LeadSource[] = [
+  LeadSource.REFERRAL,
+  LeadSource.INSTAGRAM,
+  LeadSource.FACEBOOK,
+  LeadSource.WALKIN,
+  LeadSource.WEBSITE,
+  LeadSource.HOUZZ,
+  LeadSource.PHONE,
+  LeadSource.OTHER,
+];
+
+const PROJECT_TYPES: ProjectType[] = [
+  ProjectType.RESIDENTIAL,
+  ProjectType.COMMERCIAL,
+  ProjectType.INDUSTRIAL,
+  ProjectType.INTERIOR,
+  ProjectType.LANDSCAPE,
+  ProjectType.INSTITUTIONAL,
+];
+
+function formatEnumLabel(val: string) {
+  return val.charAt(0) + val.slice(1).toLowerCase().replace(/_/g, " ");
+}
 
 const stageConfig: Record<LeadStage, { label: string; color: string }> = {
   NEW: { label: "New", color: "#8891A8" },
@@ -22,39 +66,200 @@ const stageConfig: Record<LeadStage, { label: string; color: string }> = {
 
 const pipelineStages: LeadStage[] = ["NEW", "CONTACTED", "SITE_VISIT", "PROPOSAL_SENT", "NEGOTIATION"];
 
-const mockLeads = [
-  { id: "1", name: "Mahesh Hegde", phone: "9876543220", source: "REFERRAL", stage: "NEW" as LeadStage, projectType: "RESIDENTIAL", budget: 5000000 },
-  { id: "2", name: "Sunita Naik", phone: "9876543221", source: "INSTAGRAM", stage: "CONTACTED" as LeadStage, projectType: "INTERIOR", budget: 800000 },
-  { id: "3", name: "Vinod Desai", phone: "9876543222", source: "WALKIN", stage: "SITE_VISIT" as LeadStage, projectType: "COMMERCIAL", budget: 3200000 },
-  { id: "4", name: "Pooja Joshi", phone: "9876543223", source: "WEBSITE", stage: "PROPOSAL_SENT" as LeadStage, projectType: "RESIDENTIAL", budget: 4500000 },
-  { id: "5", name: "Arun Kulkarni", phone: "9876543224", source: "REFERRAL", stage: "NEGOTIATION" as LeadStage, projectType: "INTERIOR", budget: 1200000 },
-  { id: "6", name: "Meera Patil", phone: "9876543225", source: "FACEBOOK", stage: "NEW" as LeadStage, projectType: "LANDSCAPE", budget: 600000 },
-  { id: "7", name: "Ravi Hiremath", phone: "9876543226", source: "PHONE", stage: "CONTACTED" as LeadStage, projectType: "RESIDENTIAL", budget: 7000000 },
-  { id: "8", name: "Sanjay Gowda", phone: "9876543227", source: "REFERRAL", stage: "WON" as LeadStage, projectType: "COMMERCIAL", budget: 12000000 },
-];
-
 export default function LeadsPage() {
+  const searchParams = useSearchParams();
+  const { plan } = usePlan();
   const [search, setSearch] = useState("");
+  useEffect(() => {
+    const q = searchParams.get("q");
+    if (q) setSearch(q);
+  }, [searchParams]);
+  const [addLeadOpen, setAddLeadOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [source, setSource] = useState<LeadSource>(LEAD_SOURCES[0]);
+  const [projectType, setProjectType] = useState("");
+  const [budget, setBudget] = useState("");
+  const { data: leads, isLoading } = useLeads();
+  const createLead = useCreateLead();
 
-  const filtered = mockLeads.filter(
+  function resetLeadForm() {
+    setName("");
+    setPhone("");
+    setEmail("");
+    setSource(LEAD_SOURCES[0]);
+    setProjectType("");
+    setBudget("");
+  }
+
+  function handleSubmitLead() {
+    const trimmedName = name.trim();
+    const trimmedPhone = phone.trim();
+    if (!trimmedName || !trimmedPhone) {
+      toast.error("Name and phone are required");
+      return;
+    }
+    let budgetNum: number | undefined;
+    if (budget.trim()) {
+      const n = Number(budget.replace(/,/g, ""));
+      if (Number.isNaN(n) || n < 0) {
+        toast.error("Enter a valid budget");
+        return;
+      }
+      budgetNum = n;
+    }
+    createLead.mutate(
+      {
+        name: trimmedName,
+        phone: trimmedPhone,
+        source,
+        ...(email.trim() ? { email: email.trim() } : {}),
+        ...(projectType ? { projectType: projectType as ProjectType } : {}),
+        ...(budgetNum !== undefined ? { budget: budgetNum } : {}),
+      },
+      {
+        onSuccess: () => {
+          toast.success("Lead created");
+          setAddLeadOpen(false);
+          resetLeadForm();
+        },
+        onError: (err) => {
+          toast.error(err instanceof Error ? err.message : "Failed to create lead");
+        },
+      }
+    );
+  }
+
+  const filtered = (leads ?? []).filter(
     (l) => !search || l.name.toLowerCase().includes(search.toLowerCase())
   );
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
+    <FeatureGate feature="leads_crm" plan={plan}>
+      <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-medium tracking-tight">Leads</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {mockLeads.length} leads &middot; Pipeline value:{" "}
-            {formatINRShort(mockLeads.filter((l) => !["WON", "LOST"].includes(l.stage)).reduce((s, l) => s + (l.budget || 0), 0))}
+            {(leads ?? []).length} leads &middot; Pipeline value:{" "}
+            {formatINRShort(
+              (leads ?? [])
+                .filter((l) => !["WON", "LOST"].includes(l.stage))
+                .reduce((s, l) => s + (l.budget || 0), 0)
+            )}
           </p>
         </div>
-        <Button>
+        <Button onClick={() => setAddLeadOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Add Lead
         </Button>
       </div>
+
+      <Dialog open={addLeadOpen} onOpenChange={setAddLeadOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add lead</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <Label htmlFor="lead-name">Name</Label>
+              <Input
+                id="lead-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Client name"
+                required
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="lead-phone">Phone</Label>
+              <Input
+                id="lead-phone"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="Phone number"
+                required
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="lead-source">Source</Label>
+              <Select value={source} onValueChange={(v) => setSource(v as LeadSource)}>
+                <SelectTrigger id="lead-source">
+                  <SelectValue placeholder="Source" />
+                </SelectTrigger>
+                <SelectContent>
+                  {LEAD_SOURCES.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {formatEnumLabel(s)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="lead-project-type">Project type</Label>
+              <Select
+                value={projectType || "__none__"}
+                onValueChange={(v) => setProjectType(v === "__none__" ? "" : v)}
+              >
+                <SelectTrigger id="lead-project-type">
+                  <SelectValue placeholder="Optional" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">None</SelectItem>
+                  {PROJECT_TYPES.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {formatEnumLabel(t)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="lead-budget">Budget (INR)</Label>
+              <Input
+                id="lead-budget"
+                type="text"
+                inputMode="decimal"
+                value={budget}
+                onChange={(e) => setBudget(e.target.value)}
+                placeholder="Optional"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="lead-email">Email</Label>
+              <Input
+                id="lead-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Optional"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setAddLeadOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleSubmitLead} disabled={createLead.isPending}>
+              {createLead.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Submit"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="relative sm:max-w-xs">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -152,6 +357,7 @@ export default function LeadsPage() {
           );
         })}
       </div>
-    </div>
+      </div>
+    </FeatureGate>
   );
 }

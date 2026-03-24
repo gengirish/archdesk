@@ -7,6 +7,8 @@ export const SIDEBAR_ITEMS = [
   "Site Tracker",
   "Leads",
   "Vendors",
+  "AI Estimator",
+  "Analytics",
 ];
 
 export const LANDING_FEATURES = [

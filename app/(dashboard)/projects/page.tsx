@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, type FormEvent } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Building2,
   Plus,
@@ -8,11 +9,17 @@ import {
   Filter,
   LayoutGrid,
   List,
+  Loader2,
 } from "lucide-react";
+import { ProjectType } from "@prisma/client";
+import { toast } from "sonner";
+import { useProjects, useCreateProject } from "@/hooks/useProjects";
+import { useClients } from "@/hooks/useClients";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -20,88 +27,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { formatINRShort, STAGE_LABELS, STAGE_COLORS } from "@/lib/utils";
-
-const mockProjects = [
-  {
-    id: "1",
-    name: "Patil Residence",
-    client: "Rajesh Patil",
-    stage: "WORKING_DRAWINGS",
-    type: "RESIDENTIAL",
-    status: "ACTIVE",
-    budget: 3500000,
-    area: 2400,
-    location: "Vidyanagar, Hubbali",
-    drawingsCount: 12,
-    milestonesCount: 4,
-  },
-  {
-    id: "2",
-    name: "Sharma Interiors",
-    client: "Priya Sharma",
-    stage: "DESIGN_DEV",
-    type: "INTERIOR",
-    status: "ACTIVE",
-    budget: 1200000,
-    area: 1800,
-    location: "Keshwapur, Hubbali",
-    drawingsCount: 6,
-    milestonesCount: 3,
-  },
-  {
-    id: "3",
-    name: "KLE Campus Block B",
-    client: "KLE Society",
-    stage: "EXECUTION",
-    type: "INSTITUTIONAL",
-    status: "ACTIVE",
-    budget: 15000000,
-    area: 12000,
-    location: "Vidyanagar, Hubbali",
-    drawingsCount: 48,
-    milestonesCount: 6,
-  },
-  {
-    id: "4",
-    name: "Deshpande Office",
-    client: "Suresh Deshpande",
-    stage: "CONCEPT",
-    type: "COMMERCIAL",
-    status: "ACTIVE",
-    budget: 800000,
-    area: 600,
-    location: "CBD, Dharwad",
-    drawingsCount: 2,
-    milestonesCount: 1,
-  },
-  {
-    id: "5",
-    name: "Green Valley Homes",
-    client: "Hubli Builders",
-    stage: "SCHEMATIC",
-    type: "RESIDENTIAL",
-    status: "ACTIVE",
-    budget: 9500000,
-    area: 8000,
-    location: "Navanagar, Hubbali",
-    drawingsCount: 8,
-    milestonesCount: 2,
-  },
-  {
-    id: "6",
-    name: "Café Aroma Fit-out",
-    client: "Anand Kulkarni",
-    stage: "COMPLETED",
-    type: "INTERIOR",
-    status: "COMPLETED",
-    budget: 650000,
-    area: 450,
-    location: "Lamington Road, Hubbali",
-    drawingsCount: 5,
-    milestonesCount: 4,
-  },
-];
+import { useProjectStore } from "@/store/useProjectStore";
 
 const projectTypes = [
   "ALL",
@@ -113,18 +48,94 @@ const projectTypes = [
   "INSTITUTIONAL",
 ];
 
+const createProjectTypes = Object.values(ProjectType);
+
 export default function ProjectsPage() {
+  const searchParams = useSearchParams();
+  const { data: projects, isLoading, error } = useProjects();
+  const { data: clients, isLoading: clientsLoading } = useClients();
+  const createProject = useCreateProject();
+  const { newProjectOpen, setNewProjectOpen } = useProjectStore();
   const [search, setSearch] = useState("");
+  useEffect(() => {
+    const q = searchParams.get("q");
+    if (q) setSearch(q);
+  }, [searchParams]);
   const [typeFilter, setTypeFilter] = useState("ALL");
   const [stageFilter, setStageFilter] = useState("ALL");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [projectName, setProjectName] = useState("");
+  const [selectedClientId, setSelectedClientId] = useState("");
+  const [selectedType, setSelectedType] = useState<ProjectType>(ProjectType.RESIDENTIAL);
+  const [projectBudget, setProjectBudget] = useState("");
+  const [projectArea, setProjectArea] = useState("");
+  const [projectLocation, setProjectLocation] = useState("");
 
-  const filtered = mockProjects.filter((p) => {
+  const clientList = clients ?? [];
+
+  function resetNewProjectForm() {
+    setProjectName("");
+    setSelectedClientId("");
+    setSelectedType(ProjectType.RESIDENTIAL);
+    setProjectBudget("");
+    setProjectArea("");
+    setProjectLocation("");
+  }
+
+  async function handleCreateProject(e: FormEvent) {
+    e.preventDefault();
+    if (!projectName.trim() || !selectedClientId || !selectedType) {
+      toast.error("Name, client, and type are required");
+      return;
+    }
+    createProject.mutate(
+      {
+        name: projectName.trim(),
+        clientId: selectedClientId,
+        type: selectedType,
+        budget: projectBudget ? parseFloat(projectBudget) : undefined,
+        area: projectArea ? parseFloat(projectArea) : undefined,
+        location: projectLocation || undefined,
+      },
+      {
+        onSuccess: () => {
+          toast.success("Project created");
+          setNewProjectOpen(false);
+          resetNewProjectForm();
+        },
+        onError: (err) => {
+          toast.error(err instanceof Error ? err.message : "Failed to create project");
+        },
+      }
+    );
+  }
+
+  const projectList = projects ?? [];
+
+  const filtered = projectList.filter((p) => {
     if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false;
     if (typeFilter !== "ALL" && p.type !== typeFilter) return false;
     if (stageFilter !== "ALL" && p.stage !== stageFilter) return false;
     return true;
   });
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <p className="text-sm text-destructive">
+          {error instanceof Error ? error.message : "Failed to load projects"}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -133,10 +144,11 @@ export default function ProjectsPage() {
         <div>
           <h1 className="text-2xl font-medium tracking-tight">Projects</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {mockProjects.length} projects &middot; {mockProjects.filter((p) => p.status === "ACTIVE").length} active
+            {projectList.length} projects &middot;{" "}
+            {projectList.filter((p) => p.status === "ACTIVE").length} active
           </p>
         </div>
-        <Button>
+        <Button onClick={() => setNewProjectOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
           New Project
         </Button>
@@ -219,7 +231,7 @@ export default function ProjectsPage() {
                   <div className="min-w-0 flex-1">
                     <h3 className="truncate text-sm font-medium">{project.name}</h3>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      {project.client}
+                      {project.client.name}
                     </p>
                   </div>
                   <Badge
@@ -236,15 +248,15 @@ export default function ProjectsPage() {
 
                 <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground">
                   <span>{project.area?.toLocaleString()} sqft</span>
-                  <span>{formatINRShort(project.budget)}</span>
+                  <span>{formatINRShort(project.budget ?? 0)}</span>
                   <span>
                     {project.type.charAt(0) + project.type.slice(1).toLowerCase()}
                   </span>
                 </div>
 
                 <div className="mt-3 flex items-center gap-4 border-t border-border/30 pt-3 text-xs text-muted-foreground">
-                  <span>{project.drawingsCount} drawings</span>
-                  <span>{project.milestonesCount} milestones</span>
+                  <span>{project._count.drawings} drawings</span>
+                  <span>{project._count.milestones} milestones</span>
                 </div>
 
                 {project.location && (
@@ -277,7 +289,7 @@ export default function ProjectsPage() {
                 <div className="col-span-2 min-w-0">
                   <div className="truncate text-sm font-medium">{project.name}</div>
                   <div className="truncate text-xs text-muted-foreground">
-                    {project.client}
+                    {project.client.name}
                   </div>
                 </div>
                 <span className="text-xs text-muted-foreground">
@@ -297,13 +309,134 @@ export default function ProjectsPage() {
                   {project.area?.toLocaleString()} sqft
                 </span>
                 <span className="text-right text-xs font-medium">
-                  {formatINRShort(project.budget)}
+                  {formatINRShort(project.budget ?? 0)}
                 </span>
               </div>
             ))}
           </div>
         </Card>
       )}
+
+      <Dialog open={newProjectOpen} onOpenChange={setNewProjectOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>New Project</DialogTitle>
+            <DialogDescription>Create a new architecture project</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreateProject} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="project-name" className="text-sm">
+                Name
+              </Label>
+              <Input
+                id="project-name"
+                value={projectName}
+                onChange={(e) => setProjectName(e.target.value)}
+                placeholder="Project name"
+                className="text-sm"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="project-client" className="text-sm">
+                Client
+              </Label>
+              <Select
+                value={selectedClientId || undefined}
+                onValueChange={setSelectedClientId}
+                disabled={clientsLoading}
+              >
+                <SelectTrigger id="project-client" className="text-sm">
+                  <SelectValue placeholder={clientsLoading ? "Loading clients…" : "Select a client"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {clientList.map((c) => (
+                    <SelectItem key={c.id} value={c.id} className="text-sm">
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="project-type" className="text-sm">
+                Type
+              </Label>
+              <Select value={selectedType} onValueChange={(v) => setSelectedType(v as ProjectType)}>
+                <SelectTrigger id="project-type" className="text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {createProjectTypes.map((t) => (
+                    <SelectItem key={t} value={t} className="text-sm">
+                      {t.charAt(0) + t.slice(1).toLowerCase()}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="project-budget" className="text-sm">
+                  Budget (optional)
+                </Label>
+                <Input
+                  id="project-budget"
+                  type="number"
+                  min={0}
+                  step="any"
+                  value={projectBudget}
+                  onChange={(e) => setProjectBudget(e.target.value)}
+                  placeholder="₹"
+                  className="text-sm"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="project-area" className="text-sm">
+                  Area sqft (optional)
+                </Label>
+                <Input
+                  id="project-area"
+                  type="number"
+                  min={0}
+                  step="any"
+                  value={projectArea}
+                  onChange={(e) => setProjectArea(e.target.value)}
+                  placeholder="sqft"
+                  className="text-sm"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="project-location" className="text-sm">
+                Location (optional)
+              </Label>
+              <Input
+                id="project-location"
+                value={projectLocation}
+                onChange={(e) => setProjectLocation(e.target.value)}
+                placeholder="City or site"
+                className="text-sm"
+              />
+            </div>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setNewProjectOpen(false)}
+                className="text-sm"
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={createProject.isPending} className="text-sm">
+                {createProject.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                Create Project
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

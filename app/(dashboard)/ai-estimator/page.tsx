@@ -26,6 +26,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn, formatINR, formatINRShort } from "@/lib/utils";
+import { FeatureGate } from "@/components/feature-gate";
+import { usePlan } from "@/hooks/usePlan";
 import { EstimatePdfDocument } from "@/components/estimate-pdf";
 import type { CostEstimateResult } from "@/app/api/ai/cost-estimate/route";
 import type { ApiResponse } from "@/types";
@@ -88,6 +90,7 @@ const DONUT_COLORS = [
 type Quality = "standard" | "premium" | "luxury";
 
 export default function AIEstimatorPage() {
+  const { plan } = usePlan();
   const [projectType, setProjectType] = useState<string>("RESIDENTIAL");
   const [area, setArea] = useState<string>("2500");
   const [quality, setQuality] = useState<Quality>("premium");
@@ -158,7 +161,8 @@ export default function AIEstimatorPage() {
     : 1;
 
   return (
-    <div className="space-y-6">
+    <FeatureGate feature="ai_estimator" plan={plan}>
+      <div className="space-y-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="flex items-center gap-2 text-primary">
@@ -573,6 +577,7 @@ export default function AIEstimatorPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+      </div>
+    </FeatureGate>
   );
 }

@@ -17,6 +17,7 @@ import {
   PanelLeft,
   Calculator,
   Sparkles,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useProjectStore } from "@/store/useProjectStore";
@@ -41,6 +42,7 @@ const navItems: NavItemDef[] = [
   { label: "Leads", href: "/leads", icon: UserPlus, minPlan: "pro" },
   { label: "Vendors", href: "/vendors", icon: Truck, minPlan: "pro" },
   { label: "AI Estimator", href: "/ai-estimator", icon: Calculator, minPlan: "pro", badge: "AI" },
+  { label: "Analytics", href: "/analytics", icon: BarChart3, minPlan: "enterprise" },
 ];
 
 export function Sidebar() {
@@ -98,6 +100,11 @@ export function Sidebar() {
                     <span className="ml-auto flex items-center gap-0.5 rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium text-primary">
                       <Sparkles className="h-2.5 w-2.5" />
                       {item.badge}
+                    </span>
+                  )}
+                  {item.minPlan === "enterprise" && !item.badge && (
+                    <span className="ml-auto rounded border border-amber-500/25 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-medium text-amber-400/90">
+                      ENT
                     </span>
                   )}
                   {item.minPlan === "pro" && !item.badge && (
