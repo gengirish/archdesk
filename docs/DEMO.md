@@ -53,19 +53,25 @@ npm run dev
 
 ---
 
-## Team Roster (5 Roles)
+## Team Roster & Login Credentials
 
-The seed creates a complete team to demonstrate role-based features:
+All 5 roles have real Clerk accounts for persona-based demos:
 
-| Role | Name | Email | Demo Focus |
-|------|------|-------|------------|
-| **OWNER** | Arjun Deshpande | arjun@designcraft.in | Full access. Dashboards, billing, approvals, firm settings |
-| **ARCHITECT** | Priya Naik | priya@designcraft.in | Project design, drawing review, client walkthroughs |
-| **DRAFTSMAN** | Anil Bijapur | anil@designcraft.in | Drawing uploads, version management, detail work |
-| **SITE_MANAGER** | Ramesh Gowda | ramesh@designcraft.in | Site updates, issue logging, daily progress photos |
-| **ADMIN** | Sneha Kulkarni | sneha@designcraft.in | Lead follow-ups, scheduling, administrative notes |
+| Role | Name | Email (login) | Password | Demo Focus |
+|------|------|---------------|----------|------------|
+| **OWNER** | Arjun Deshpande | gen.girish@gmail.com | *(Google sign-in)* | Full access. Dashboards, billing, approvals, firm settings |
+| **ARCHITECT** | Priya Naik | priya@designcraft.in | `Demo@2026` | Project design, drawing review, client walkthroughs |
+| **DRAFTSMAN** | Anil Bijapur | anil@designcraft.in | `Demo@2026` | Drawing uploads, version management, detail work |
+| **SITE_MANAGER** | Ramesh Gowda | ramesh@designcraft.in | `Demo@2026` | Site updates, issue logging, daily progress photos |
+| **ADMIN** | Sneha Kulkarni | sneha@designcraft.in | `Demo@2026` | Lead follow-ups, scheduling, administrative notes |
 
-> The signed-in Clerk account maps to the **OWNER** role. Other roles use placeholder Clerk IDs and can be linked to real accounts for multi-user demos.
+### How to demo different roles
+
+1. Open https://archdesk.vercel.app in a **normal browser window** — sign in as **Owner** (Google)
+2. Open an **incognito/private window** — sign in as **Architect** (priya@designcraft.in / Demo@2026)
+3. Show both side-by-side to demonstrate role-specific views
+
+> **Tip:** Use different browser profiles (Chrome/Edge/Firefox) to stay signed in as multiple roles simultaneously without logging out.
 
 ---
 

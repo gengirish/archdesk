@@ -18,9 +18,12 @@ import {
 
 const prisma = new PrismaClient();
 
-// Pass your real Clerk userId as an env var to link the demo firm to your account.
-//   OWNER_CLERK_ID=user_xxxx npx ts-node --compiler-options '{"module":"CommonJS"}' prisma/seed.ts
-const OWNER_CLERK_ID = process.env.OWNER_CLERK_ID || "demo_owner_clerk_id";
+// Override any Clerk ID via env var, otherwise use the real demo accounts.
+const OWNER_CLERK_ID = process.env.OWNER_CLERK_ID || "user_3BLxytNh7DWXfNRU9mlfFsYDlxr";
+const ARCHITECT_CLERK_ID = process.env.ARCHITECT_CLERK_ID || "user_3BNyR6qnCUx129mmGakFA0CMF8T";
+const DRAFTSMAN_CLERK_ID = process.env.DRAFTSMAN_CLERK_ID || "user_3BNyU3Onp5HeXdvDaIUYLLbQ8hx";
+const SITE_MANAGER_CLERK_ID = process.env.SITE_MANAGER_CLERK_ID || "user_3BNyWFjnMXhUnBDz3dUCdp7jzWa";
+const ADMIN_CLERK_ID = process.env.ADMIN_CLERK_ID || "user_3BNyYyW1WtQD30Kmnn1ST2iK0ZA";
 
 const placeholderDrawing = (slug: string) =>
   `https://placehold.co/1200x800/111318/E8A045?text=${encodeURIComponent(slug)}`;
@@ -79,7 +82,7 @@ async function main() {
 
   const architect = await prisma.user.create({
     data: {
-      clerkId: "demo_architect_clerk_id",
+      clerkId: ARCHITECT_CLERK_ID,
       firmId: firm.id,
       name: "Priya Naik",
       email: "priya@designcraft.in",
@@ -90,7 +93,7 @@ async function main() {
 
   const draftsman = await prisma.user.create({
     data: {
-      clerkId: "demo_draftsman_clerk_id",
+      clerkId: DRAFTSMAN_CLERK_ID,
       firmId: firm.id,
       name: "Anil Bijapur",
       email: "anil@designcraft.in",
@@ -101,7 +104,7 @@ async function main() {
 
   const siteManager = await prisma.user.create({
     data: {
-      clerkId: "demo_sitemanager_clerk_id",
+      clerkId: SITE_MANAGER_CLERK_ID,
       firmId: firm.id,
       name: "Ramesh Gowda",
       email: "ramesh@designcraft.in",
@@ -112,7 +115,7 @@ async function main() {
 
   const admin = await prisma.user.create({
     data: {
-      clerkId: "demo_admin_clerk_id",
+      clerkId: ADMIN_CLERK_ID,
       firmId: firm.id,
       name: "Sneha Kulkarni",
       email: "sneha@designcraft.in",
@@ -604,11 +607,12 @@ async function main() {
   console.log(`Site Issues:  6`);
   console.log(`Lead Activities: 15`);
   console.log(`Drawing Comments: ${commentData.length}`);
-  console.log(`\nOwner Clerk ID: ${OWNER_CLERK_ID}`);
-  if (OWNER_CLERK_ID === "demo_owner_clerk_id") {
-    console.log("⚠  Using placeholder Clerk ID. To link to your account:");
-    console.log("   OWNER_CLERK_ID=user_xxxx npm run db:seed");
-  }
+  console.log(`\nClerk logins:`);
+  console.log(`  OWNER        → ${OWNER_CLERK_ID}`);
+  console.log(`  ARCHITECT    → ${ARCHITECT_CLERK_ID}`);
+  console.log(`  DRAFTSMAN    → ${DRAFTSMAN_CLERK_ID}`);
+  console.log(`  SITE_MANAGER → ${SITE_MANAGER_CLERK_ID}`);
+  console.log(`  ADMIN        → ${ADMIN_CLERK_ID}`);
 }
 
 main()
