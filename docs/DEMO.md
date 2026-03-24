@@ -2,35 +2,278 @@
 
 > A guided tour of ArchDesk for stakeholders, investors, and early users.
 >
-> **Persona:** You are Arjun, the owner of "ArchiVision Studio" — a 5-person architecture firm in Hubbali, Karnataka. You manage residential and interior design projects across Hubbali-Dharwad.
+> **Persona:** You are Arjun Deshpande, the owner of "DesignCraft Studios" — a 5-person architecture firm in Hubbali, Karnataka. You manage residential, commercial, and interior projects across Hubbali-Dharwad.
 
 ---
 
-## Prerequisites
+## Demo Environment Setup
 
-Before running the demo:
+### Prerequisites
 
 ```bash
 # 1. Install dependencies
 npm install
 
-# 2. Set up environment variables
-#    Copy .env.example to .env.local and fill in:
+# 2. Copy .env.example to .env.local and fill in:
 #    - Clerk keys (sign up at clerk.com)
-#    - Supabase database URL and API keys (sign up at supabase.com)
-#    - Razorpay test keys (optional for demo)
+#    - DATABASE_URL (Neon / Supabase PostgreSQL)
+#    - Razorpay test keys (optional)
 
-# 3. Push database schema
-npm run db:push
+# 3. Push schema & generate client
+npm run db:push && npm run db:generate
 
-# 4. Generate Prisma client
-npm run db:generate
+# 4. Seed the demo database (PowerShell)
+$env:DATABASE_URL = "<your-db-url>"
+$env:OWNER_CLERK_ID = "user_xxxx"   # your Clerk user ID
+npx tsx prisma/seed.ts
 
-# 5. Start the dev server
+# 5. Start dev server
 npm run dev
 ```
 
-Open **http://localhost:3000** in your browser.
+> **Tip:** Find your Clerk user ID in the [Clerk Dashboard → Users](https://dashboard.clerk.com). Setting `OWNER_CLERK_ID` links the demo firm to your real account so you can sign in and see all data.
+
+### What gets seeded
+
+| Entity | Count | Highlights |
+|--------|------:|------------|
+| Firm | 1 | DesignCraft Studios, GST-registered, Hubbali |
+| Users | 5 | All 5 roles (see below) |
+| Clients | 8 | Mix of residential, commercial, NRI |
+| Projects | 10 | 6 project types, 7 stages, Active/Completed/On-hold |
+| Milestones | 20 | PAID / DUE / OVERDUE / UNPAID / UPCOMING |
+| Invoices | 14 | PAID / UNPAID / OVERDUE / DRAFT |
+| Drawings | 12 | Up to v3, 4 statuses, with version history |
+| Drawing Comments | 13 | Team + client comments |
+| Leads | 12 | All 8 pipeline stages, 8 lead sources |
+| Lead Activities | 15 | Calls, emails, WhatsApp, proposals, site visits, stage changes |
+| Vendors | 8 | 8 categories with ratings and GST |
+| Site Updates | 10 | With photos and weather data |
+| Site Issues | 6 | CRITICAL / HIGH / MEDIUM / LOW × OPEN / IN_PROGRESS / RESOLVED / CLOSED |
+
+---
+
+## Team Roster (5 Roles)
+
+The seed creates a complete team to demonstrate role-based features:
+
+| Role | Name | Email | Demo Focus |
+|------|------|-------|------------|
+| **OWNER** | Arjun Deshpande | arjun@designcraft.in | Full access. Dashboards, billing, approvals, firm settings |
+| **ARCHITECT** | Priya Naik | priya@designcraft.in | Project design, drawing review, client walkthroughs |
+| **DRAFTSMAN** | Anil Bijapur | anil@designcraft.in | Drawing uploads, version management, detail work |
+| **SITE_MANAGER** | Ramesh Gowda | ramesh@designcraft.in | Site updates, issue logging, daily progress photos |
+| **ADMIN** | Sneha Kulkarni | sneha@designcraft.in | Lead follow-ups, scheduling, administrative notes |
+
+> The signed-in Clerk account maps to the **OWNER** role. Other roles use placeholder Clerk IDs and can be linked to real accounts for multi-user demos.
+
+---
+
+## Client Directory
+
+| Client | Phone | City | Project(s) | Notes |
+|--------|-------|------|-----------|-------|
+| Rajesh Kulkarni | 9845012345 | Hubbali | Kulkarni Residence, Vidya Niketan School | Long-term client, WhatsApp preferred |
+| Lakshmi Hegde | 9900298765 | Hubbali | Hegde Villa, Hegde Garden (completed) | Detail-oriented, wants photo updates |
+| Vikram Patil | 9741234567 | Hubbali | Patil Farmhouse | NRI client — prefers email & portal |
+| Dr. Ananya Bhat | 9988776655 | Hubbali | Bhat Dental Clinic | Available after 6 PM only |
+| Siddharth Nadiger | 9880123456 | Dharwad | Nadiger Retail Showroom | Weekend meetings, showroom chain |
+| Meera Joshi | 9845098765 | Hubbali | Joshi Apartment Interiors | — |
+| Naveen Hosamani | 9743567890 | Hubbali | Hosamani Warehouse | Referred by Rajesh Kulkarni |
+| Savita Desai | 9886012345 | Hubbali | Desai Row Houses (on-hold) | — |
+
+---
+
+## Project Portfolio
+
+### By Type
+
+| Type | Projects | Budget Range |
+|------|----------|-------------|
+| Residential | 4 | ₹18.5L – ₹2Cr |
+| Commercial | 2 | ₹85L – ₹1.2Cr |
+| Interior | 1 | ₹18.5L |
+| Institutional | 1 | ₹1.85Cr |
+| Landscape | 1 | ₹16.5L (completed) |
+| Industrial | 1 | ₹95L |
+
+### All Projects
+
+| # | Project | Client | Type | Stage | Status | Budget | Area |
+|---|---------|--------|------|-------|--------|--------|------|
+| 1 | Kulkarni Residence — Gokul Road | Rajesh Kulkarni | Residential | Working Drawings | Active | ₹28L | 1,850 sqft |
+| 2 | Hegde Villa — Vidyanagar | Lakshmi Hegde | Residential | Design Dev | Active | ₹45L | 2,400 sqft |
+| 3 | Patil Farmhouse — Unkal | Vikram Patil | Residential | Execution | Active | ₹62L | 3,200 sqft |
+| 4 | Bhat Dental Clinic — Keshwapur | Dr. Ananya Bhat | Commercial | Schematic | Active | ₹85L | 2,100 sqft |
+| 5 | Nadiger Retail Showroom — Dharwad | Siddharth Nadiger | Commercial | Execution | Active | ₹1.2Cr | 4,800 sqft |
+| 6 | Joshi Apartment Interiors — Navanagar | Meera Joshi | Interior | Execution | Active | ₹18.5L | 1,450 sqft |
+| 7 | Vidya Niketan School Extension | Rajesh Kulkarni | Institutional | Schematic | Active | ₹1.85Cr | 4,800 sqft |
+| 8 | Hegde Garden & Driveway | Lakshmi Hegde | Landscape | Completed | Completed | ₹16.5L | 4,200 sqft |
+| 9 | Hosamani Warehouse — Industrial Area | Naveen Hosamani | Industrial | Concept | Active | ₹95L | 5,000 sqft |
+| 10 | Desai Row Houses — Phase 1 | Savita Desai | Residential | Concept | On Hold | ₹2Cr | 4,500 sqft |
+
+### Team Assignments
+
+| Project | Lead | Support | Site |
+|---------|------|---------|------|
+| Kulkarni Residence | Arjun (Owner) | Anil (Draftsman) | Ramesh (Site Mgr) |
+| Hegde Villa | Priya (Architect) | Anil (Draftsman) | — |
+| Patil Farmhouse | Arjun (Owner) | Priya (Architect) | Ramesh (Site Mgr) |
+| Bhat Dental Clinic | Priya (Architect) | Anil (Draftsman) | — |
+| Nadiger Showroom | Arjun + Priya | Anil (Draftsman) | Ramesh (Site Mgr) |
+| Joshi Interiors | Priya (Interior) | — | Ramesh (Site Mgr) |
+| Vidya Niketan School | Arjun (Owner) | Priya (Architect) | — |
+| Hegde Garden | Priya (Landscape) | — | — |
+| Hosamani Warehouse | Arjun (Owner) | — | — |
+| Desai Row Houses | Arjun (Owner) | Priya (Architect) | — |
+
+---
+
+## Financial Overview
+
+### Milestone Payment Schedule
+
+| Milestone | Project | Amount | GST (18%) | Total | Status |
+|-----------|---------|--------|-----------|-------|--------|
+| Concept Design Fee | Kulkarni Residence | ₹1,50,000 | ₹27,000 | ₹1,77,000 | **PAID** (28 Jan) |
+| Schematic Design Fee | Kulkarni Residence | ₹2,00,000 | ₹36,000 | ₹2,36,000 | **PAID** (10 Apr) |
+| Working Drawings Package | Kulkarni Residence | ₹3,50,000 | ₹63,000 | ₹4,13,000 | DUE |
+| Site Analysis & Brief | Hegde Villa | ₹80,000 | ₹14,400 | ₹94,400 | **PAID** (28 Sep '24) |
+| Schematic Design | Hegde Villa | ₹2,20,000 | ₹39,600 | ₹2,59,600 | **PAID** (8 Jan) |
+| Design Development | Hegde Villa | ₹2,80,000 | ₹50,400 | ₹3,30,400 | UNPAID |
+| GFC & Statutory | Patil Farmhouse | ₹4,00,000 | ₹72,000 | ₹4,72,000 | **PAID** (25 Jul '24) |
+| Site Coord — Phase 1 | Patil Farmhouse | ₹1,80,000 | ₹32,400 | ₹2,12,400 | **OVERDUE** |
+| Site Coord — Phase 2 | Patil Farmhouse | ₹1,80,000 | ₹32,400 | ₹2,12,400 | UPCOMING |
+| Concept & Zoning | Bhat Clinic | ₹1,20,000 | ₹21,600 | ₹1,41,600 | **PAID** (12 Mar) |
+| Schematic Design | Bhat Clinic | ₹4,50,000 | ₹81,000 | ₹5,31,000 | DUE |
+| Schematic Design | Nadiger Showroom | ₹6,00,000 | ₹1,08,000 | ₹7,08,000 | **PAID** (29 Jan) |
+| Working Drawings & MEP | Nadiger Showroom | ₹9,00,000 | ₹1,62,000 | ₹10,62,000 | **PAID** (14 May) |
+| Execution Supervision Q1 | Nadiger Showroom | ₹3,50,000 | ₹63,000 | ₹4,13,000 | DUE |
+| Mood Boards & BOQ | Joshi Interiors | ₹95,000 | ₹17,100 | ₹1,12,100 | **PAID** (18 Mar) |
+| Execution Drawings | Joshi Interiors | ₹1,40,000 | ₹25,200 | ₹1,65,200 | UNPAID |
+| Preliminary Design | Vidya Niketan | ₹9,50,000 | ₹1,71,000 | ₹11,21,000 | UPCOMING |
+| Landscape Concept | Hegde Garden | ₹85,000 | ₹15,300 | ₹1,00,300 | **PAID** (28 Apr '24) |
+| Execution & Supervision | Hegde Garden | ₹1,20,000 | ₹21,600 | ₹1,41,600 | **PAID** (2 Dec '24) |
+| Concept & Feasibility | Hosamani Warehouse | ₹2,50,000 | ₹45,000 | ₹2,95,000 | DUE |
+
+### Invoice Summary
+
+| Status | Count | Total |
+|--------|------:|------:|
+| PAID | 11 | ₹50,63,000 |
+| UNPAID | 1 | ₹3,30,400 |
+| OVERDUE | 1 | ₹2,12,400 |
+| DRAFT | 1 | ₹2,95,000 |
+
+---
+
+## Drawings & Review Workflow
+
+| Drawing | Project | Type | Version | Status | Comments |
+|---------|---------|------|---------|--------|----------|
+| Ground Floor Plan | Kulkarni Residence | Plan | v3 | Approved | 3 (owner approval, architect note, client question) |
+| First Floor Plan | Kulkarni Residence | Plan | v2 | Approved | 2 (owner approval, client question) |
+| Front Elevation | Kulkarni Residence | Elevation | v1 | Pending Review | — |
+| 3D Exterior Render | Hegde Villa | Render | v2 | Approved | 2 (owner direction, client alternative request) |
+| Section A–A | Hegde Villa | Section | v2 | Revision Requested | 2 (architect NBC compliance flag, draftsman ack) |
+| Foundation Detail | Patil Farmhouse | Detail | v1 | Approved | — |
+| Pool & Deck Layout | Patil Farmhouse | Plan | v1 | Pending Review | — |
+| Clinic Floor Plan | Bhat Clinic | Plan | v1 | Pending Review | 2 (architect AERB note, client request) |
+| Structural Grid | Nadiger Showroom | Detail | v1 | Approved | — |
+| Electrical Layout GF | Nadiger Showroom | Detail | v2 | Approved | — |
+| Living-Dining 3D | Joshi Interiors | Render | v2 | Approved | 2 (architect direction, client colour request) |
+| Site Plan & Parking | Vidya Niketan | Plan | v1 | Pending Review | — |
+
+### Sample Drawing Comments (for demo)
+
+- **Client comment:** *"Can we add a shoe rack near the entrance? Otherwise looks perfect."* — Rajesh Kulkarni on Ground Floor Plan
+- **Architect flag:** *"Staircase headroom is 2.0m — needs minimum 2.2m per NBC."* — Priya Naik on Section A–A
+- **Client feedback:** *"Love the stone cladding! Can we see an option with grey tiles instead?"* — Lakshmi Hegde on 3D Render
+- **Clinical requirement:** *"Please add a separate staff entrance. Also the waiting area feels small."* — Dr. Ananya Bhat on Clinic Plan
+
+---
+
+## Leads Pipeline
+
+### Pipeline Stages
+
+| Stage | Leads | Example |
+|-------|------:|---------|
+| NEW | 3 | Prakash Sutar (₹32L duplex, Instagram), Pallavi Shirur (₹9.5L interior), Deepa Gadag (₹27L, Instagram DM) |
+| CONTACTED | 2 | Divya Kamat (₹12L interior, website), Basavaraj Angadi (₹78L commercial, website) |
+| SITE_VISIT | 2 | Ravi Moorgeri (₹1.5Cr café + co-working, referral), Shweta Toravi (₹41L residential, referral) |
+| PROPOSAL_SENT | 2 | Sneha Mannur (₹55L residential, phone), Arun Hosalli (₹1.1Cr cold storage, phone) |
+| NEGOTIATION | 1 | Kiran Badiger (₹6.5L landscape, walk-in) |
+| WON | 1 | Nethra Gouda (₹2.2Cr NGO learning centre, Houzz) |
+| LOST | 1 | Manoj Hiremath (₹18L residential, Facebook — chose packaged builder) |
+
+### Lead Sources Distribution
+
+| Source | Count |
+|--------|------:|
+| Instagram | 2 |
+| Website | 2 |
+| Referral | 2 |
+| Phone | 2 |
+| Walk-in | 1 |
+| Houzz | 1 |
+| Facebook | 1 |
+| Other | 1 |
+
+### Lead Activity Trail (demo of CRM workflow)
+
+1. **Prakash Sutar** (NEW): WhatsApp portfolio + fee structure sent → follow-up scheduled
+2. **Divya Kamat** (CONTACTED): Initial call → mood boards + BOQ emailed
+3. **Ravi Moorgeri** (SITE_VISIT): Plot measured → detailed proposal sent (₹12L fee)
+4. **Sneha Mannur** (PROPOSAL_SENT): Site visited → proposal with 8% fee sent
+5. **Kiran Badiger** (NEGOTIATION): Discussing phased execution to fit budget
+6. **Nethra Gouda** (WON): Formal agreement signed
+7. **Manoj Hiremath** (LOST): Lost to packaged builder (price-sensitive)
+
+---
+
+## Vendor Network
+
+| Vendor | Category | City | Rating | GST | Specialty |
+|--------|----------|------|--------|-----|-----------|
+| Shree Basaveshwara Civil Contractors | Contractor | Hubbali | ★★★★★ | Yes | Go-to for RCC & masonry. 20+ years |
+| Karnataka Tile House | Tiles | Hubbali | ★★★★ | — | Full vitrified, ceramic, sanitary display |
+| PowerLine Electricals | Electrical | Hubbali | ★★★★ | Yes | Havells & Schneider auth. Home automation |
+| FlowRight Plumbing Solutions | Plumbing | Hubbali | ★★★★★ | — | Best plumbing crew. Jaquar certified |
+| ColourCraft Paints & Coatings | Paint | Hubbali | ★★★★ | — | Asian Paints & Berger authorised |
+| North Karnataka Steel Traders | Steel | Hubbali | ★★★★ | Yes | TMT bars. Same-day delivery |
+| Dharwad Wood Works | Wood | Dharwad | ★★★★★ | — | Premium teak & sal. Custom frames |
+| Crystal Glass & Aluminium | Glass | Hubbali | ★★★ | Yes | Standard work. Premium via Belagavi |
+
+---
+
+## Site Tracker
+
+### Recent Site Updates
+
+| Date | Project | By | Note | Photos | Weather |
+|------|---------|-----|------|--------|---------|
+| Recent | Patil Farmhouse | Ramesh (Site Mgr) | First floor slab casting done. Curing 14 days. | 2 | Clear, 34°C |
+| Recent | Patil Farmhouse | Ramesh (Site Mgr) | Brickwork GF 80%. Lintel beams poured. | 2 | Partly cloudy, 30°C |
+| Recent | Patil Farmhouse | Arjun (Owner) | Client site visit. Happy. Bathroom tile change requested. | 1 | Clear, 32°C |
+| Recent | Nadiger Showroom | Ramesh (Site Mgr) | GF column casting done. FF steel being tied. | 3 | Sunny, 36°C |
+| Recent | Nadiger Showroom | Ramesh (Site Mgr) | Electrical conduit laying. MEP coordination done. | 1 | — |
+| Recent | Joshi Interiors | Ramesh (Site Mgr) | False ceiling framework installed. POP tomorrow. | 2 | Overcast, 28°C |
+| Recent | Joshi Interiors | Priya (Architect) | Modular kitchen carcass delivered. Checking dims. | 1 | — |
+| Recent | Hegde Villa | Priya (Architect) | Client 3D walkthrough. Parapet height tweaks. | — | — |
+| Recent | Bhat Clinic | Priya (Architect) | Setback verification. Awaiting NOC from client. | 1 | — |
+| Recent | Kulkarni Residence | Anil (Draftsman) | GF structure working drawings in progress. | — | — |
+
+### Open Issues
+
+| Issue | Project | Severity | Status | Assigned To |
+|-------|---------|----------|--------|-------------|
+| Concrete quality test failure (18 MPa vs 25 MPa required) | Patil Farmhouse | **CRITICAL** | Open | Arjun |
+| Water seepage in basement wall | Patil Farmhouse | HIGH | Open | Ramesh |
+| Steel delivery delayed 5 days | Patil Farmhouse | MEDIUM | In Progress | NK Steel Traders |
+| Column alignment off 15mm | Nadiger Showroom | MEDIUM | Resolved | Ramesh |
+| Wrong tile shade delivered | Joshi Interiors | LOW | Resolved | Karnataka Tile House |
+| Neighbour noise complaint | Nadiger Showroom | LOW | Closed | Ramesh |
 
 ---
 
@@ -38,306 +281,152 @@ Open **http://localhost:3000** in your browser.
 
 ### Scene 1: Landing Page
 
-**URL:** `http://localhost:3000`
+**URL:** `/`
 
-**What you see:**
-- Clean, dark-themed landing page with the ArchDesk brand (gold on dark)
+**Show:**
+- Dark-themed landing page with gold accents
 - Tagline: *"Run your architecture firm from one desk"*
-- Badge: *"Built for architects in Hubbali, Karnataka"*
-- Six feature cards: Project Tracker, Drawing Management, Milestone Billing, Site Updates, Leads CRM, Firm Dashboard
-- India-specific callout section highlighting GST invoicing, UPI payments, and INR formatting
+- India-specific callouts: GST invoicing, UPI payments, INR formatting
 
-**Talking points:**
-- "ArchDesk is built specifically for architecture firms in Tier-2 Indian cities"
-- "It's not a generic project management tool — it understands project stages, milestone billing, drawing approvals, and GST compliance"
-- "Everything is in INR with lakh/crore formatting, not dollars"
-
-**Action:** Click "Get Started" or "Sign In" to proceed.
+**Say:** "ArchDesk is purpose-built for architecture firms in Tier-2 Indian cities — not a generic project management tool."
 
 ---
 
-### Scene 2: Authentication
-
-**URL:** `/sign-in` or `/sign-up`
-
-**What you see:**
-- Clerk's sign-in/sign-up widget, centered on the dark background
-
-**Talking points:**
-- "Authentication is handled by Clerk — enterprise-grade security without building it ourselves"
-- "Supports email, Google, and phone number sign-in"
-- "Each user belongs to one firm — complete data isolation between firms"
-
-**Action:** Sign in with your test account.
-
----
-
-### Scene 3: Dashboard
+### Scene 2: Sign In → Dashboard
 
 **URL:** `/dashboard`
 
-**What you see:**
-- Collapsible sidebar with all modules (Projects, Clients, Drawings, Billing, Site Tracker, Leads, Vendors, Settings)
-- Top bar with search, notifications bell, and user avatar
-- Four stat cards:
-  - **8 Active Projects**
-  - **Revenue This Month: ₹4.9L** (note the Indian lakh format)
-  - **5 Pending Approvals** (drawings awaiting review)
-  - **12 Active Leads** with pipeline value of ₹28.5L
-- Overdue alert banner: "2 projects have overdue milestones"
-- Recent Projects list with stage badges (colour-coded)
-- Revenue Summary with +52% month-over-month growth
-- Project Stage Distribution showing how many projects are in each stage
+**Show:**
+- 8 active projects, revenue in ₹ lakhs, pending drawing approvals, active leads with pipeline value
+- Overdue milestone alerts
+- Project stage distribution
 
-**Talking points:**
-- "Arjun opens ArchDesk every morning and sees exactly where his firm stands"
-- "Revenue is shown in lakhs — ₹4.9L, not ₹490,000. This is how Indian architects think about money"
-- "The overdue alert immediately flags projects needing attention"
-- "Stage distribution helps Arjun balance his team's workload — too many projects in Execution means he needs more site managers"
+**Say:** "Arjun opens ArchDesk every morning and knows exactly where his firm stands. Revenue in lakhs, not dollars."
 
 ---
 
-### Scene 4: Projects
+### Scene 3: Projects
 
 **URL:** `/projects`
 
-**What you see:**
-- Header: "6 projects, 5 active"
-- "New Project" button (primary, gold)
-- Search bar, type filter (Residential, Commercial, etc.), stage filter, and grid/list toggle
-- Project cards showing:
-  - **Patil Residence** — Working Drawings, 2,400 sqft, ₹35L, Vidyanagar Hubbali
-  - **Sharma Interiors** — Design Dev, 1,800 sqft, ₹12L, Keshwapur
-  - **KLE Campus Block B** — Execution, 12,000 sqft, ₹1.5Cr, Vidyanagar
-  - **Deshpande Office** — Concept, 600 sqft, ₹8L, CBD Dharwad
-  - **Green Valley Homes** — Schematic, 8,000 sqft, ₹95L, Navanagar
-  - **Cafe Aroma Fit-out** — Completed, 450 sqft, ₹6.5L, Lamington Road
+**Show:**
+- 10 projects across 6 types, grid/list toggle, type & stage filters
+- Click into Patil Farmhouse → milestones, drawings, site updates, team
 
-**Demo actions:**
-1. Toggle between grid and list view — "Arjun prefers grid view for quick scanning, list view for data comparison"
-2. Filter by "INTERIOR" type — shows only Sharma Interiors and Cafe Aroma
-3. Filter by "EXECUTION" stage — shows only KLE Campus
-4. Search "Patil" — instant filter
-
-**Talking points:**
-- "Each project tracks its stage through the architecture workflow: Concept → Schematic → Design Dev → Working Drawings → Execution → Completed"
-- "Note the KLE Campus budget is shown as ₹1.5Cr — automatic crore formatting for large projects"
-- "Locations are local — Vidyanagar, Keshwapur, Navanagar — real Hubbali neighbourhoods"
+**Say:** "Every project flows through architecture-specific stages — Concept to Completed. Budgets automatically format as ₹45L or ₹1.2Cr."
 
 ---
 
-### Scene 5: Clients
-
-**URL:** `/clients`
-
-**What you see:**
-- Six client cards with avatar initials, phone numbers (+91 format), email, city, and project count
-- Search bar filtering by name or phone
-
-**Talking points:**
-- "Every client is linked to their projects. Arjun can see Hubli Builders has 4 projects — they're his biggest client"
-- "Phone numbers are 10-digit Indian mobiles with +91 prefix"
-- "Cities default to Hubbali but support the wider region: Dharwad, Belagavi, Davangere"
-
----
-
-### Scene 6: Drawings
+### Scene 4: Drawing Collaboration
 
 **URL:** `/drawings`
 
-**What you see:**
-- Drawing gallery with blueprint-style preview placeholders
-- Each card shows: drawing name, project, type badge, version number, file size, comment count, status, and last update date
-- Status badges colour-coded: Gold (Pending Review), Green (Approved), Red (Revision Requested)
+**Show:**
+- 12 drawings with version badges and status (Approved/Pending/Revision Requested)
+- Click into Ground Floor Plan → v1, v2, v3 history + team and client comments
 
-**Talking points:**
-- "Arjun's draftsman uploads the Ground Floor Plan. It starts as 'Pending Review'"
-- "Arjun reviews it, approves it, or sends it back with a revision request"
-- "Version tracking means no more 'Plan_Final_v3_FINAL_really_final.dwg'"
-- "The client can also comment on drawings through the portal — no WhatsApp needed"
-- "Section A-A is on v2 with 6 comments and marked 'Revision Requested' — it needs work"
+**Say:** "No more 'Plan_Final_v3_FINAL_really_final.dwg'. Version tracking and threaded comments replace the WhatsApp chaos. Clients comment right here."
 
 ---
 
-### Scene 7: Billing
+### Scene 5: Billing & Invoices
 
 **URL:** `/billing`
 
-**What you see:**
-- Summary cards:
-  - **Total Billed: ₹30.5L**
-  - **Collected: ₹18.5L** (green)
-  - **Outstanding: ₹4L** (yellow)
-  - **Collection Rate: 61%** with progress bar
-- Milestone table with 8 entries across 3 projects
-- Each row shows: milestone name, stage, project, base amount, GST-inclusive amount, and status
+**Show:**
+- 20 milestones with GST breakup, payment status colour coding
+- OVERDUE flag on Patil Farmhouse Phase 1
 
-**Demo details to highlight:**
-- Patil Residence Retainer: ₹1,00,000 base → ₹1,18,000 with GST
-- KLE Campus Execution Supervision: ₹10,00,000 — upcoming
-- Sharma Interiors Design Fee: ₹1,50,000 — **OVERDUE** (red indicator)
-
-**Talking points:**
-- "Billing is tied to project stages — not arbitrary invoices. When Arjun completes schematic design, the schematic fee becomes due"
-- "GST at 18% is automatically calculated and shown on every milestone"
-- "Amounts use Indian formatting: ₹1,00,000 not ₹100,000"
-- "Arjun can generate a Razorpay payment link and send it to the client via WhatsApp. The client pays via UPI — no cheques, no bank transfers"
-- "The overdue indicator on Sharma Interiors flags that Priya hasn't paid the design fee yet"
+**Say:** "Billing is tied to project stages — when schematic design is done, the fee becomes due. GST at 18% is auto-calculated. Amounts in Indian format: ₹1,00,000."
 
 ---
 
-### Scene 8: Leads CRM
+### Scene 6: Leads CRM
 
 **URL:** `/leads`
 
-**What you see:**
-- Kanban board with 5 pipeline columns: New, Contacted, Site Visit, Proposal Sent, Negotiation
-- Lead cards showing: name, phone, project type, budget, and source
-- Pipeline value: ₹1.5Cr (sum of all active lead budgets)
-- Won and Lost sections below the pipeline
+**Show:**
+- Pipeline view: NEW → CONTACTED → SITE_VISIT → PROPOSAL_SENT → NEGOTIATION → WON/LOST
+- Lead sources: Instagram, referrals, website, walk-ins
+- Activity trail: call logs, WhatsApp messages, proposals
 
-**Demo walkthrough:**
-1. **New column:** Mahesh Hegde (₹50L residential, via Referral) and Meera Patil (₹6L landscape, via Facebook)
-2. **Contacted:** Sunita Naik (₹8L interior, via Instagram) — "Arjun's Instagram posts brought this lead in"
-3. **Site Visit:** Vinod Desai (₹32L commercial, walk-in)
-4. **Proposal Sent:** Pooja Joshi (₹45L residential, via website)
-5. **Negotiation:** Arun Kulkarni (₹12L interior, referral)
-6. **Won:** Sanjay Gowda (₹1.2Cr commercial) — "This one converted to a project"
-
-**Talking points:**
-- "Most architecture firms in India track leads in their head or a notebook. ArchDesk gives them a visual pipeline"
-- "Lead sources are India-specific: Instagram and Facebook are huge for architects, plus referrals are the #1 source"
-- "When a lead is Won, it converts directly into a project — no re-entry of data"
-- "Pipeline value helps Arjun forecast revenue: ₹1.5Cr in the pipeline means he can plan hiring"
+**Say:** "Most firms track leads in their head. ArchDesk shows the full pipeline — ₹2.2Cr in WON, ₹1.5Cr in active negotiation. Instagram and referrals are the top sources."
 
 ---
 
-### Scene 9: Site Tracker
+### Scene 7: Site Tracker & Issues
 
 **URL:** `/site-tracker`
 
-**What you see:**
-- Left (2/3): Timeline of site updates with user avatars
-- Right (1/3): Open issues sidebar
+**Show:**
+- Daily logs with photos and weather from Ramesh (site manager)
+- CRITICAL issue: concrete quality test failure
+- Issue resolution history
 
-**Site updates shown:**
-1. Anil Kumar @ Patil Residence — "Foundation work completed. Plinth beam casting done."(3 photos, Sunny, Execution stage)
-2. Prakash S @ KLE Campus — "Second floor slab shuttering in progress. Steel binding 70% complete."(5 photos, Partly Cloudy)
-3. Previous updates with brick work, material delivery, false ceiling work
-
-**Issues sidebar:**
-- Water seepage in basement (HIGH, Open) — Patil Residence
-- Steel delivery delayed (MEDIUM, In Progress) — KLE Campus
-- Wrong tile shade delivered (LOW, Resolved) — Sharma Interiors
-
-**Talking points:**
-- "Anil Kumar is Arjun's site manager. Every evening he logs what happened on site with photos"
-- "Weather tracking matters — monsoon delays are common in Karnataka"
-- "Issues are colour-coded by severity. The water seepage is HIGH priority and still OPEN"
-- "Arjun reviews this from his office or home — he doesn't need to visit every site every day"
-- "The client can also see progress updates through their portal"
+**Say:** "Ramesh logs progress from his phone every evening. Arjun reviews from home. The CRITICAL concrete test failure is flagged immediately — no waiting for the next site visit."
 
 ---
 
-### Scene 10: Vendors
-
-**URL:** `/vendors`
-
-**What you see:**
-- Vendor cards with name, category, phone, city, star rating, and GST number
-- Category filter dropdown
-- Vendors across Hubbali, Dharwad, and Belagavi
-
-**Notable vendors:**
-- Hubli Steel Centre — 5 stars, Hubbali
-- Karnataka Wood Works — 5 stars, Hubbali
-- Modern Glass House — 4 stars, Belagavi (regional vendor)
-
-**Talking points:**
-- "Arjun rates every vendor after working with them. When starting a new project, he knows exactly who to call for tiles, steel, or electrical work"
-- "GST numbers are tracked — important for input tax credit claims"
-- "This is a local vendor network — not a national database. These are the actual suppliers in Hubbali-Dharwad"
-
----
-
-### Scene 11: Settings
-
-**URL:** `/settings`
-
-**What you see:**
-- Firm profile form: name, GST number, phone, email, address, city, website
-- Brand section: brand colour picker (default gold #E8A045) and logo upload
-
-**Talking points:**
-- "The firm profile appears on every invoice and the client portal"
-- "Brand colour customisation means the client portal matches the firm's identity"
-- "GST number is critical — it goes on every invoice for tax compliance"
-
----
-
-### Scene 12: AI Cost Estimator
+### Scene 8: AI Cost Estimator
 
 **URL:** `/ai-estimator`
 
-**What you see:**
-- Split-panel layout: form on the left, results on the right
-- Input form: project type dropdown, area in sq ft, quality tier (Standard/Premium/Luxury radio buttons), location with city suggestions, number of floors, interior toggle
-- After submitting: detailed cost breakdown with animated progress bars for each category (Structure 30%, Brickwork 12%, Plumbing 8%, etc.)
-- Grand total with GST prominently displayed in ₹ lakh/crore format
-- Donut-style visualization of cost distribution
-- "Create Project from Estimate" button
+**Show:**
+- Input: Residential, 1800 sqft, Premium, Hubbali, 2 floors
+- Output: ₹36-40L breakdown by category (structure, plumbing, electrical, etc.) with GST
+- "Create Project" button
 
-**Talking points:**
-- "Arjun's clients always ask 'How much will it cost?' — this gives an instant, professional answer"
-- "Rates are real Indian construction rates — ₹1,800-2,200/sqft for standard residential in Tier-2 cities"
-- "Location multipliers adjust for Mumbai (1.3x) vs Hubballi (1.0x) vs rural (0.85x)"
-- "GST is automatically calculated on the total — no surprises for the client"
-- "One click creates a project from the estimate — seamless workflow"
+**Say:** "Client asks 'How much will it cost?' — instant, professional answer. Rates are real Indian construction rates. One click creates a project."
 
 ---
 
-### Scene 13: Client Portal
+### Scene 9: Client Portal
 
-**URL:** `/portal/[token]` (public, no login needed)
+**URL:** `/portal/[token]`
 
-**What you see:**
-- Clean, light-themed page (client-facing, not the dark dashboard)
-- Firm name and logo at the top with the firm's brand colour
-- Project name, client name, and location
-- Visual timeline of project stages with the current stage highlighted
-- Milestone payment table: name, amount with GST, status badge (Paid/Upcoming/Overdue), payment link
-- Approved drawings list
-- Recent site update photos and notes
+**Show:**
+- Light-themed, branded page with project timeline
+- Milestone payments with status (Paid/Upcoming/Overdue)
+- Approved drawings and site photos
 
-**Talking points:**
-- "Clients get a magic link — no app download, no account creation"
-- "They can see exactly where their project stands, what's been paid, and what's coming up"
-- "This replaces the daily WhatsApp 'kya update hai?' messages"
-- "Approved drawings are visible but only approved ones — no confusion with drafts"
-- "The firm's brand colour makes it feel like their own portal"
+**Say:** "Clients get a magic link. No app, no account. They see their project progress, approved drawings, and payment schedule. Replaces the daily 'kya update hai?' WhatsApp messages."
 
 ---
 
-## Closing Summary
+### Scene 10: Vendor Network
 
-### The problem
-Architecture firms in Tier-2 Indian cities run on WhatsApp, Excel, and memory. Project status lives in the architect's head. Invoices are Word documents. Drawings are shared as loose files. Site progress is communicated through phone calls.
+**URL:** `/vendors`
 
-### The solution
-ArchDesk gives these firms a single desk to manage everything:
-- **Projects** tracked through architecture-specific stages
-- **Drawings** versioned and reviewed with client commenting
-- **Billing** with GST compliance and UPI payment collection
-- **Site progress** logged daily with photos and issue tracking
-- **Leads** managed in a visual pipeline with source tracking
-- **Vendors** rated and organised by category
+**Show:**
+- 8 vendors, star ratings, GST numbers, categories
+- Filter by Contractor, Tiles, Electrical, etc.
 
-### Why ArchDesk wins
-1. **India-first** — INR formatting, GST, UPI, Indian phone numbers
-2. **Architecture-specific** — Not generic PM. Understands stages, drawings, milestones
-3. **Tier-2 focused** — Built for how firms in Hubbali actually work, not Bangalore startups
-4. **Client portal** — Clients view progress without downloading an app or creating an account
-5. **Mobile-ready** — Site managers log updates from the field on their phones
+**Say:** "Arjun's rated vendor network. When starting a new project, he knows exactly who to call — and their GST numbers are ready for input tax credit."
+
+---
+
+## Closing Pitch
+
+### The Problem
+Architecture firms in Tier-2 India run on WhatsApp + Excel + memory. Project status lives in the architect's head. Invoices are Word docs. Drawings are loose WhatsApp files. Site progress = phone calls.
+
+### The Solution
+One desk for everything:
+- **Projects** through architecture-specific stages
+- **Drawings** versioned with client commenting
+- **Billing** with GST compliance and UPI collection
+- **Site progress** with daily photo logs and issue tracking
+- **Leads** in a visual pipeline with source analytics
+- **AI estimator** for instant client-facing cost answers
+- **Client portal** for self-service project visibility
+
+### Why ArchDesk Wins
+1. **India-first** — INR (₹ lakhs/crores), GST, UPI, Indian phone numbers
+2. **Architecture-specific** — Project stages, drawing workflows, milestone billing
+3. **Tier-2 focused** — Built for Hubbali, not Bangalore startups
+4. **Client portal** — Magic-link access, no downloads
+5. **AI-powered** — Cost estimation with real Indian construction rates
+6. **SaaS-ready** — Free / Pro / Enterprise tiers with feature gating
 
 ---
 
@@ -346,30 +435,19 @@ ArchDesk gives these firms a single desk to manage everything:
 | Area | Status |
 |------|--------|
 | Landing page | Built (static, styled) |
-| Authentication | Clerk integrated + webhook auto-provisioning |
-| Dashboard | **Live data** (API-driven with loading skeletons) |
-| Projects | Built (mock UI, API CRUD complete) |
-| Clients | Built (mock UI, API CRUD complete) |
-| Drawings | Built (mock UI, API CRUD complete) |
-| Billing | Built (mock UI, API + Invoice PDF generation) |
-| Leads CRM | Built (mock UI, API CRUD + one-click conversion) |
-| Site Tracker | Built (mock UI, API CRUD complete) |
-| Vendors | Built (mock UI, API CRUD complete) |
-| Settings | Built (static form, API GET/PATCH) |
-| AI Cost Estimator | **New** — interactive estimator with Indian rates |
-| Client Portal | **New** — magic-link access, project timeline, payments |
-| SaaS Plan Tiers | **New** — Free / Pro / Enterprise with feature gating |
-| API routes | 16 endpoints (up from 2) |
-| Database schema | Complete (Prisma, 15 models) + seed script |
-| PDF invoices | GST-compliant invoice with @react-pdf/renderer |
-| Razorpay integration | Helper functions ready, webhook pending |
-| Email notifications | Resend configured, templates pending |
-
-### Next milestones
-1. Wire remaining pages to real APIs (replace mock data on projects, clients, leads, vendors, drawings, billing, site-tracker)
-2. Build create/edit forms with React Hook Form + Zod validation
-3. Implement drawing upload with Supabase Storage
-4. Wire Razorpay payment link generation to milestones
-5. Add email notifications (invoice sent, payment received, drawing approved)
-6. Build analytics dashboard UI with charts (recharts or similar)
-7. Add role-based access control enforcement in UI
+| Authentication | Clerk + webhook auto-provisioning |
+| Dashboard | **Live data** (API-driven) |
+| Projects | Built (API CRUD complete) |
+| Clients | Built (API CRUD complete) |
+| Drawings | Built (API CRUD, versions, comments) |
+| Billing | Built (API + GST PDF invoice generation) |
+| Leads CRM | Built (API CRUD + one-click conversion) |
+| Site Tracker | Built (API CRUD, issues, photos) |
+| Vendors | Built (API CRUD complete) |
+| Settings | Built (API GET/PATCH) |
+| AI Cost Estimator | Built (interactive, Indian rates) |
+| Client Portal | Built (magic-link, project timeline) |
+| SaaS Plan Tiers | Built (Free/Pro/Enterprise gating) |
+| API routes | 16 endpoints |
+| Database | 15 Prisma models + comprehensive seed |
+| Demo data | **5 roles, 10 projects, 20 milestones, 12 drawings, 12 leads, 8 vendors, 6 issues** |
