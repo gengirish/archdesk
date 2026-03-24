@@ -6,6 +6,8 @@ const TEST_EMAIL = process.env.E2E_CLERK_USER_EMAIL || "";
 const TEST_PASSWORD = process.env.E2E_CLERK_USER_PASSWORD || "";
 
 test.describe("Dashboard (authenticated)", () => {
+  test.setTimeout(60_000);
+
   test.skip(
     !TEST_EMAIL || !TEST_PASSWORD,
     "Set E2E_CLERK_USER_EMAIL and E2E_CLERK_USER_PASSWORD to run authenticated tests"

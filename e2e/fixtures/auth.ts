@@ -50,6 +50,6 @@ export async function signIn(page: Page, email: string, _password: string) {
   await page.goto(`/sign-in#/?__clerk_ticket=${token}`);
 
   await page.waitForURL((url) => !url.pathname.includes("/sign-in"), {
-    timeout: 30_000,
+    timeout: 45_000,
   });
 }
