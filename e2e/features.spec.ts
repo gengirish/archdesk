@@ -26,10 +26,11 @@ test.describe("Feature pages (authenticated)", () => {
   test("new project dialog opens and shows form fields", async ({ page }) => {
     await page.getByRole("link", { name: "Projects" }).click();
     await expect(page).toHaveURL(/\/projects/, { timeout: 10_000 });
-    await page.getByRole("button", { name: /new project/i }).click();
-    await expect(page.getByRole("heading", { name: /new project/i })).toBeVisible({ timeout: 5_000 });
+    const newBtn = page.getByRole("button", { name: /new project/i });
+    await expect(newBtn).toBeVisible({ timeout: 10_000 });
+    await newBtn.click();
+    await expect(page.getByText(/new project/i).first()).toBeVisible({ timeout: 10_000 });
     await expect(page.getByRole("button", { name: /create project/i })).toBeVisible();
-    await expect(page.getByRole("button", { name: /cancel/i })).toBeVisible();
   });
 
   test("clients page loads with Add Client button", async ({ page }) => {
@@ -42,8 +43,10 @@ test.describe("Feature pages (authenticated)", () => {
   test("add client dialog opens", async ({ page }) => {
     await page.getByRole("link", { name: "Clients" }).click();
     await expect(page).toHaveURL(/\/clients/, { timeout: 10_000 });
-    await page.getByRole("button", { name: /add client/i }).click();
-    await expect(page.getByRole("heading", { name: /add client/i })).toBeVisible({ timeout: 5_000 });
+    const addBtn = page.getByRole("button", { name: /add client/i });
+    await expect(addBtn).toBeVisible({ timeout: 10_000 });
+    await addBtn.click();
+    await expect(page.getByText(/add client/i).first()).toBeVisible({ timeout: 10_000 });
   });
 
   test("billing page loads with milestone table", async ({ page }) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { Plus, Search, UserPlus, Phone, Loader2 } from "lucide-react";
 import { LeadSource, ProjectType } from "@prisma/client";
@@ -67,6 +67,14 @@ const stageConfig: Record<LeadStage, { label: string; color: string }> = {
 const pipelineStages: LeadStage[] = ["NEW", "CONTACTED", "SITE_VISIT", "PROPOSAL_SENT", "NEGOTIATION"];
 
 export default function LeadsPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>}>
+      <LeadsContent />
+    </Suspense>
+  );
+}
+
+function LeadsContent() {
   const searchParams = useSearchParams();
   const { plan } = usePlan();
   const [search, setSearch] = useState("");

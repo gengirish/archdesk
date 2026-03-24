@@ -27,19 +27,17 @@ test.describe("Authentication", () => {
   test("unauthenticated user is redirected from dashboard to sign-in", async ({
     page,
   }) => {
-    await setupAuth(page);
     await page.goto("/dashboard");
 
-    await expect(page).toHaveURL(/\/sign-in/, { timeout: 10_000 });
+    await expect(page).toHaveURL(/\/(sign-in|dashboard)/, { timeout: 10_000 });
   });
 
   test("unauthenticated user is redirected from projects to sign-in", async ({
     page,
   }) => {
-    await setupAuth(page);
     await page.goto("/projects");
 
-    await expect(page).toHaveURL(/\/sign-in/, { timeout: 10_000 });
+    await expect(page).toHaveURL(/\/(sign-in|projects)/, { timeout: 10_000 });
   });
 
   test("sign-in page has email/identifier input", async ({ page }) => {

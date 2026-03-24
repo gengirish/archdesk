@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, type FormEvent } from "react";
+import { Suspense, useState, useEffect, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { Plus, Search, Users, Phone, Mail, MapPin, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -30,6 +30,14 @@ function getInitials(name: string): string {
 }
 
 export default function ClientsPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>}>
+      <ClientsContent />
+    </Suspense>
+  );
+}
+
+function ClientsContent() {
   const searchParams = useSearchParams();
   const [search, setSearch] = useState("");
   useEffect(() => {
