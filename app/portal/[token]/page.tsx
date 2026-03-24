@@ -24,7 +24,7 @@ function milestonePaymentLabel(
   }
   const late =
     status === "OVERDUE" ||
-    (!!dueDate && isOverdue(dueDate) && status !== "PAID");
+    (!!dueDate && isOverdue(dueDate));
   if (late) {
     return { label: "Overdue", className: "bg-red-50 text-red-800 ring-red-200" };
   }
