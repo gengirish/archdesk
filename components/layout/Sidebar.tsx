@@ -15,20 +15,32 @@ import {
   Ruler,
   PanelLeftClose,
   PanelLeft,
+  Calculator,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useProjectStore } from "@/store/useProjectStore";
-import { Separator } from "@/components/ui/separator";
+import type { PlanTier } from "@/lib/feature-tiers";
+import { PLAN_DISPLAY } from "@/lib/feature-tiers";
 
-const navItems = [
+interface NavItemDef {
+  label: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  minPlan?: PlanTier;
+  badge?: string;
+}
+
+const navItems: NavItemDef[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Projects", href: "/projects", icon: Building2 },
   { label: "Clients", href: "/clients", icon: Users },
-  { label: "Drawings", href: "/drawings", icon: PenTool },
+  { label: "Drawings", href: "/drawings", icon: PenTool, minPlan: "pro" },
   { label: "Billing", href: "/billing", icon: IndianRupee },
-  { label: "Site Tracker", href: "/site-tracker", icon: HardHat },
-  { label: "Leads", href: "/leads", icon: UserPlus },
-  { label: "Vendors", href: "/vendors", icon: Truck },
+  { label: "Site Tracker", href: "/site-tracker", icon: HardHat, minPlan: "pro" },
+  { label: "Leads", href: "/leads", icon: UserPlus, minPlan: "pro" },
+  { label: "Vendors", href: "/vendors", icon: Truck, minPlan: "pro" },
+  { label: "AI Estimator", href: "/ai-estimator", icon: Calculator, minPlan: "pro", badge: "AI" },
 ];
 
 export function Sidebar() {
@@ -79,7 +91,22 @@ export function Sidebar() {
               )}
             >
               <item.icon className="h-4 w-4 shrink-0" />
-              {sidebarOpen && <span>{item.label}</span>}
+              {sidebarOpen && (
+                <span className="flex flex-1 items-center justify-between">
+                  {item.label}
+                  {item.badge && (
+                    <span className="ml-auto flex items-center gap-0.5 rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                      <Sparkles className="h-2.5 w-2.5" />
+                      {item.badge}
+                    </span>
+                  )}
+                  {item.minPlan === "pro" && !item.badge && (
+                    <span className="ml-auto rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary/60">
+                      PRO
+                    </span>
+                  )}
+                </span>
+              )}
             </Link>
           );
         })}
@@ -98,6 +125,20 @@ export function Sidebar() {
           {sidebarOpen && <span>Settings</span>}
         </Link>
       </div>
+
+      {/* Powered by */}
+      {sidebarOpen && (
+        <div className="border-t border-border/50 px-4 py-3">
+          <a
+            href="https://www.intelliforge.tech/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-1 text-[10px] text-muted-foreground/50 transition-colors hover:text-muted-foreground"
+          >
+            Powered by <span className="font-medium">IntelliForge AI</span>
+          </a>
+        </div>
+      )}
     </aside>
   );
 }

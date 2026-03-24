@@ -1,6 +1,8 @@
 # ArchDesk — Feature Documentation
 
 > Architecture & Design Project Management SaaS for Tier-2 Indian Cities
+>
+> Powered by [IntelliForge AI](https://www.intelliforge.tech/)
 
 ---
 
@@ -31,6 +33,8 @@ The central command centre for the firm. Shows real-time metrics at a glance.
 - Recent projects list with client name, budget, and current stage
 - Revenue summary with trend indicator
 - Project stage distribution breakdown (Concept through Completed)
+
+**API:** `GET /api/dashboard/stats` (summary KPIs), `GET /api/dashboard/analytics` (12-month revenue vs invoiced, stage/type breakdowns, lead conversion, top clients, cash flow, unified activity feed).
 
 ---
 
@@ -144,7 +148,8 @@ Architecture fees are milestone-based, tied to project stages:
 
 **Invoice generation:**
 - Auto-generated invoice numbers (e.g., `ARC-2026-001`)
-- PDF generation via `@react-pdf/renderer`
+- `POST /api/invoices/generate` creates a `DRAFT` invoice and returns `invoice`, `firm`, `client`, `project`, and `milestone` for client-side PDF rendering
+- PDF layout via `@react-pdf/renderer` (`components/invoice-pdf.tsx` — TAX INVOICE, CGST/SGST lines, amount in words)
 - Tracks Razorpay payment ID and order ID
 
 **Payments:**
@@ -247,6 +252,84 @@ Firm profile and brand configuration.
 
 ---
 
+### 10. AI Construction Cost Estimator (`/ai-estimator`)
+
+Instant, professional cost estimates for Indian construction projects. The demo moment for investors.
+
+**How it works:**
+1. Architect inputs: project type, area (sq ft), quality tier, location, floors, interior toggle
+2. Deterministic calculator uses real Indian construction rates and location multipliers
+3. Returns detailed cost breakdown with category-wise allocation
+
+**Rate table (per sq ft, INR):**
+| Type | Standard | Premium | Luxury |
+|------|----------|---------|--------|
+| Residential | 1,800–2,200 | 2,500–3,200 | 3,500–5,000 |
+| Commercial | 2,200–2,800 | 3,000–4,000 | 4,500–6,500 |
+| Interior | 800–1,200 | 1,500–2,200 | 2,500–4,000 |
+
+**Location multipliers:** Mumbai/Delhi 1.3x, Bangalore/Hyderabad 1.15x, Tier-2 cities 1.0x, Rural 0.85x
+
+**Output includes:**
+- Grand total with GST (18%)
+- 10-category breakdown: Structure (30%), Brickwork (12%), Plumbing (8%), Electrical (8%), Flooring (10%), Painting (7%), Doors & Windows (8%), Kitchen/Bathrooms (7%), Architect Fee (8%), Contingency (2%)
+- Optional interior breakdown (false ceiling, modular kitchen, wardrobes, furniture, lighting)
+- Timeline estimate based on area
+- Assumptions list
+
+**API:** `POST /api/ai/cost-estimate`
+
+---
+
+### 11. Client Portal (`/portal/[token]`)
+
+Magic-link access for clients to view their project. No app download, no account creation.
+
+**What clients see:**
+- Project name, stage, and timeline with current stage highlighted
+- Milestone payment table with status (Paid/Upcoming/Overdue) and Razorpay payment links
+- Approved drawings (only approved — no draft confusion)
+- Recent site update photos and notes
+- Firm branding (name, logo, brand colour)
+
+**How it works:**
+- Each project has a unique `clientToken` (auto-generated cuid)
+- Client accesses `/portal/[token]` — no Clerk session needed
+- Light theme (client-facing), not the dark dashboard
+- Middleware exempts `/portal/*` from auth
+
+**API:** `GET /api/portal/[token]` (public)
+
+---
+
+### 12. SaaS Plan Tiers
+
+Three-tier business model with feature gating.
+
+| Feature | Free | Pro | Enterprise |
+|---------|------|-----|------------|
+| Dashboard | Yes | Yes | Yes |
+| Projects | 3 max | Unlimited | Unlimited |
+| Clients | 5 max | Unlimited | Unlimited |
+| Basic Billing | Yes | Yes | Yes |
+| Settings | Yes | Yes | Yes |
+| Drawings | — | Yes | Yes |
+| Site Tracker | — | Yes | Yes |
+| Leads CRM | — | Yes | Yes |
+| Vendors | — | Yes | Yes |
+| AI Estimator | — | Yes | Yes |
+| PDF Invoices | — | Yes | Yes |
+| File Uploads | — | Yes | Yes |
+| Client Portal | — | — | Yes |
+| Multi-user Teams | — | — | Yes |
+| Advanced Analytics | — | — | Yes |
+| White Label | — | — | Yes |
+| API Access | — | — | Yes |
+
+**Implementation:** `lib/feature-tiers.ts` (plan hierarchy, feature-to-plan mapping, `hasAccess()`, `getRequiredPlan()`), `components/feature-gate.tsx` (upgrade prompt UI), plan badges on sidebar navigation.
+
+---
+
 ## Architecture & Security
 
 ### Multi-tenancy
@@ -261,19 +344,24 @@ Every database query is scoped to `firmId`. A firm's data is completely isolated
 | Site Manager | On-site construction oversight |
 | Admin | Administrative staff |
 
-### Authentication
+### Authentication & User Provisioning
 - Clerk handles sign-in/sign-up, session management, and user profiles
+- Clerk webhook (`/api/webhooks/clerk`) automatically creates Firm + User records on signup
+- New users get role `OWNER` and a default firm named `"{Name}'s Firm"`
 - All dashboard routes are protected via Clerk middleware
-- Public routes: sign-in, sign-up, client portal, and webhook endpoints
+- Public routes: landing page, sign-in, sign-up, client portal, and webhook endpoints
+- Reusable auth helper (`lib/auth.ts`): `getAuthUser()` resolves Clerk session to Prisma User + Firm
 
 ### Client Portal
-Each project has a unique `clientToken`. Clients access their project via `/portal/[token]` without needing a Clerk account. They can view drawings and leave comments identified by name.
+Each project has a unique `clientToken` (auto-generated cuid). Clients access their project via `/portal/[token]` without needing a Clerk account. They can view the project timeline, milestone payments, approved drawings, and site update photos. The portal uses a light theme with the firm's brand colour.
 
 ### API Design
-- RESTful routes under `/api/[resource]/[id]`
+- 16 RESTful endpoints under `/api/[resource]`
 - Typed responses using `{ data, error }` pattern
-- Clerk session validated on every request
+- Clerk session validated on every authenticated request
 - Firm ownership checked before any read/write
+- Zod validation on AI estimator and other complex inputs
+- Consistent error handling with `console.error("[ROUTE_NAME]", error)` and 500 responses
 
 ### Tech Stack
 | Layer | Technology |

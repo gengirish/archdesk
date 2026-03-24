@@ -166,14 +166,29 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="border-t border-border/40">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Ruler className="h-4 w-4" />
-            ArchDesk
+        <div className="mx-auto max-w-6xl px-6 py-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Ruler className="h-4 w-4" />
+              ArchDesk
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Built for Tier-2 India &middot; Hubbali, Karnataka
+            </p>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Built for Tier-2 India &middot; Hubbali, Karnataka
-          </p>
+          <div className="mt-4 flex items-center justify-center gap-1.5 border-t border-border/30 pt-4">
+            <span className="text-[11px] text-muted-foreground/60">
+              Powered by
+            </span>
+            <a
+              href="https://www.intelliforge.tech/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[11px] font-medium text-muted-foreground/80 transition-colors hover:text-primary"
+            >
+              IntelliForge AI
+            </a>
+          </div>
         </div>
       </footer>
     </div>

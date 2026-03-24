@@ -13,8 +13,16 @@ const dmMono = DM_Mono({
 
 export const metadata: Metadata = {
   title: "ArchDesk — Architecture Project Management",
-  description: "Project management SaaS for architecture and design firms in India",
-  keywords: ["architecture", "design", "project management", "Hubbali", "Karnataka"],
+  description:
+    "Project management SaaS for architecture and design firms in India. Powered by IntelliForge AI.",
+  keywords: [
+    "architecture",
+    "design",
+    "project management",
+    "Hubbali",
+    "Karnataka",
+    "IntelliForge AI",
+  ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

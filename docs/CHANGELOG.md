@@ -1,5 +1,36 @@
 # ArchDesk — Changelog
 
+## 2026-03-24 — YC-ready feature buildout
+
+### Foundation
+- Added Clerk webhook (`/api/webhooks/clerk`) for automatic Firm + User provisioning on signup
+- Created reusable auth helper (`lib/auth.ts`) — `getAuthUser()` / `requireAuth()`
+- Built complete CRUD API layer: 16 endpoints (up from 2)
+  - Clients, Leads (with conversion), Vendors, Drawings, Milestones, Site Updates, Firm Settings, Dashboard Stats, Dashboard Analytics, Invoice Generation
+- Added Prisma seed script (`prisma/seed.ts`) with realistic Hubballi demo data (firm, 6 clients, 8 projects, 18 milestones, 5 invoices, 8 drawings, 10 leads, 6 vendors)
+- Created TanStack React Query hooks for all resources (`useClients`, `useLeads`, `useVendors`, `useDashboard`)
+
+### YC Differentiators
+- **AI Construction Cost Estimator** (`/ai-estimator`) — deterministic calculator with real Indian construction rates per sq ft, location multipliers, quality tiers, GST, detailed category breakdown, timeline estimate
+- **Client Portal** (`/portal/[token]`) — magic-link access for clients, project timeline, milestone payment status, approved drawings, site update photos. No login required
+- **GST Invoice PDF Generation** — `@react-pdf/renderer` TAX INVOICE with CGST/SGST split, amount in words, firm branding. Auto invoice numbering
+- **Dashboard Analytics API** — 12-month revenue trends, project distribution, lead conversion rate, cash flow projections, top clients, unified activity timeline
+
+### SaaS Business Model
+- Added 3-tier plan system (Free / Pro / Enterprise) adapted from interview-with-giri patterns
+- Feature gate component with upgrade prompt
+- Plan-gated sidebar navigation with PRO and AI badges
+- Plan limits: Free (3 projects, 5 clients), Pro (unlimited), Enterprise (portal + teams + analytics)
+
+### Architecture Improvements
+- Wired dashboard page to real API data with loading skeletons (replaced mock data)
+- Lead-to-project one-click conversion (creates Client + Project + auto stage change)
+- Consistent `{ data, error }` API response envelope across all routes
+- All queries firm-scoped for multi-tenant isolation
+
+### Deployment Fix
+- Fixed CSS not loading on Vercel: converted `postcss.config.mjs` to `.js` (CommonJS), installed missing `autoprefixer`, removed unnecessary `output: "standalone"`
+
 ---
 
 ## 2026-03-24 — E2E testing and documentation setup

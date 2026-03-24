@@ -2,6 +2,10 @@
   "name": "archdesk",
   "version": "0.1.0",
   "private": true,
+  "author": {
+    "name": "Girish Hiremath",
+    "url": "https://www.intelliforge.tech/"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
@@ -17,7 +21,7 @@
     "db:seed": "npx ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
   },
   "dependencies": {
-    "@clerk/nextjs": "^5.7.5",
+    "@clerk/nextjs": "^6.39.1",
     "@hookform/resolvers": "^3.3.4",
     "@prisma/client": "^5.11.0",
     "@radix-ui/react-alert-dialog": "^1.0.5",
@@ -42,7 +46,7 @@
     "clsx": "^2.1.0",
     "date-fns": "^3.6.0",
     "lucide-react": "^0.363.0",
-    "next": "14.1.4",
+    "next": "^14.2.25",
     "razorpay": "^2.9.2",
     "react": "^18",
     "react-dom": "^18",

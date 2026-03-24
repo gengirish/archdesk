@@ -275,6 +275,49 @@ Open **http://localhost:3000** in your browser.
 
 ---
 
+### Scene 12: AI Cost Estimator
+
+**URL:** `/ai-estimator`
+
+**What you see:**
+- Split-panel layout: form on the left, results on the right
+- Input form: project type dropdown, area in sq ft, quality tier (Standard/Premium/Luxury radio buttons), location with city suggestions, number of floors, interior toggle
+- After submitting: detailed cost breakdown with animated progress bars for each category (Structure 30%, Brickwork 12%, Plumbing 8%, etc.)
+- Grand total with GST prominently displayed in ₹ lakh/crore format
+- Donut-style visualization of cost distribution
+- "Create Project from Estimate" button
+
+**Talking points:**
+- "Arjun's clients always ask 'How much will it cost?' — this gives an instant, professional answer"
+- "Rates are real Indian construction rates — ₹1,800-2,200/sqft for standard residential in Tier-2 cities"
+- "Location multipliers adjust for Mumbai (1.3x) vs Hubballi (1.0x) vs rural (0.85x)"
+- "GST is automatically calculated on the total — no surprises for the client"
+- "One click creates a project from the estimate — seamless workflow"
+
+---
+
+### Scene 13: Client Portal
+
+**URL:** `/portal/[token]` (public, no login needed)
+
+**What you see:**
+- Clean, light-themed page (client-facing, not the dark dashboard)
+- Firm name and logo at the top with the firm's brand colour
+- Project name, client name, and location
+- Visual timeline of project stages with the current stage highlighted
+- Milestone payment table: name, amount with GST, status badge (Paid/Upcoming/Overdue), payment link
+- Approved drawings list
+- Recent site update photos and notes
+
+**Talking points:**
+- "Clients get a magic link — no app download, no account creation"
+- "They can see exactly where their project stands, what's been paid, and what's coming up"
+- "This replaces the daily WhatsApp 'kya update hai?' messages"
+- "Approved drawings are visible but only approved ones — no confusion with drafts"
+- "The firm's brand colour makes it feel like their own portal"
+
+---
+
 ## Closing Summary
 
 ### The problem
@@ -302,30 +345,31 @@ ArchDesk gives these firms a single desk to manage everything:
 
 | Area | Status |
 |------|--------|
-| Landing page | Built (static) |
-| Authentication | Clerk integrated |
-| Dashboard | Built (mock data) |
-| Projects | Built (mock data, grid/list, filters) |
-| Clients | Built (mock data) |
-| Drawings | Built (mock data) |
-| Billing | Built (mock data, GST calc) |
-| Leads CRM | Built (mock data, kanban) |
-| Site Tracker | Built (mock data, timeline + issues) |
-| Vendors | Built (mock data) |
-| Settings | Built (static form) |
-| API routes | Projects CRUD (Prisma + Clerk auth) |
-| Database schema | Complete (Prisma, 15 models) |
-| Client portal | Schema ready, UI pending |
-| PDF invoices | Library installed, template pending |
+| Landing page | Built (static, styled) |
+| Authentication | Clerk integrated + webhook auto-provisioning |
+| Dashboard | **Live data** (API-driven with loading skeletons) |
+| Projects | Built (mock UI, API CRUD complete) |
+| Clients | Built (mock UI, API CRUD complete) |
+| Drawings | Built (mock UI, API CRUD complete) |
+| Billing | Built (mock UI, API + Invoice PDF generation) |
+| Leads CRM | Built (mock UI, API CRUD + one-click conversion) |
+| Site Tracker | Built (mock UI, API CRUD complete) |
+| Vendors | Built (mock UI, API CRUD complete) |
+| Settings | Built (static form, API GET/PATCH) |
+| AI Cost Estimator | **New** — interactive estimator with Indian rates |
+| Client Portal | **New** — magic-link access, project timeline, payments |
+| SaaS Plan Tiers | **New** — Free / Pro / Enterprise with feature gating |
+| API routes | 16 endpoints (up from 2) |
+| Database schema | Complete (Prisma, 15 models) + seed script |
+| PDF invoices | GST-compliant invoice with @react-pdf/renderer |
 | Razorpay integration | Helper functions ready, webhook pending |
 | Email notifications | Resend configured, templates pending |
 
 ### Next milestones
-1. Connect all pages to real database (replace mock data with API calls)
-2. Build create/edit forms for projects, clients, leads, vendors
+1. Wire remaining pages to real APIs (replace mock data on projects, clients, leads, vendors, drawings, billing, site-tracker)
+2. Build create/edit forms with React Hook Form + Zod validation
 3. Implement drawing upload with Supabase Storage
-4. Build client portal UI (`/portal/[token]`)
-5. Create PDF invoice template
-6. Wire up Razorpay payment link generation
-7. Add email notifications (invoice sent, payment received, drawing approved)
-8. Deploy to Vercel
+4. Wire Razorpay payment link generation to milestones
+5. Add email notifications (invoice sent, payment received, drawing approved)
+6. Build analytics dashboard UI with charts (recharts or similar)
+7. Add role-based access control enforcement in UI

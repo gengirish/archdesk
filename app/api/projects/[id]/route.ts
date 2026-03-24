@@ -8,7 +8,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ): Promise<NextResponse<ApiResponse<ProjectWithRelations>>> {
   try {
-    const { userId } = auth();
+    const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ data: null, error: "Unauthorized" }, { status: 401 });
     }
@@ -43,7 +43,7 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ): Promise<NextResponse<ApiResponse<ProjectWithRelations>>> {
   try {
-    const { userId } = auth();
+    const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ data: null, error: "Unauthorized" }, { status: 401 });
     }

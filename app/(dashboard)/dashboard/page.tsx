@@ -1,109 +1,68 @@
+"use client";
+
 import {
   Building2,
   IndianRupee,
-  AlertTriangle,
-  FileCheck,
   UserPlus,
   TrendingUp,
+  Users,
+  AlertCircle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatINR, formatINRShort, STAGE_LABELS, STAGE_COLORS } from "@/lib/utils";
+import { useDashboardStats } from "@/hooks/useDashboard";
 
-const mockStats = {
-  activeProjects: 8,
-  overdueProjects: 2,
-  revenueThisMonth: 485000,
-  revenueLastMonth: 320000,
-  pendingApprovals: 5,
-  leadsCount: 12,
-  leadsPipelineValue: 2850000,
-};
+function StatCardSkeleton() {
+  return (
+    <Card className="border-border bg-card text-card-foreground">
+      <CardContent className="p-5">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-3 w-28" />
+          <Skeleton className="h-4 w-4 rounded" />
+        </div>
+        <Skeleton className="mt-2 h-8 w-24" />
+      </CardContent>
+    </Card>
+  );
+}
 
-const mockRecentProjects = [
-  {
-    id: "1",
-    name: "Patil Residence",
-    client: "Rajesh Patil",
-    stage: "WORKING_DRAWINGS",
-    type: "RESIDENTIAL",
-    budget: 3500000,
-  },
-  {
-    id: "2",
-    name: "Sharma Interiors",
-    client: "Priya Sharma",
-    stage: "DESIGN_DEV",
-    type: "INTERIOR",
-    budget: 1200000,
-  },
-  {
-    id: "3",
-    name: "KLE Campus Block B",
-    client: "KLE Society",
-    stage: "EXECUTION",
-    type: "INSTITUTIONAL",
-    budget: 15000000,
-  },
-  {
-    id: "4",
-    name: "Deshpande Office",
-    client: "Suresh Deshpande",
-    stage: "CONCEPT",
-    type: "COMMERCIAL",
-    budget: 800000,
-  },
-  {
-    id: "5",
-    name: "Green Valley Homes",
-    client: "Hubli Builders",
-    stage: "SCHEMATIC",
-    type: "RESIDENTIAL",
-    budget: 9500000,
-  },
-];
-
-const stats = [
-  {
-    label: "Active Projects",
-    value: mockStats.activeProjects,
-    icon: Building2,
-    suffix: "",
-    color: "text-primary",
-  },
-  {
-    label: "Revenue This Month",
-    value: mockStats.revenueThisMonth,
-    icon: IndianRupee,
-    format: "inr",
-    color: "text-green-400",
-  },
-  {
-    label: "Pending Approvals",
-    value: mockStats.pendingApprovals,
-    icon: FileCheck,
-    suffix: " drawings",
-    color: "text-yellow-400",
-  },
-  {
-    label: "Active Leads",
-    value: mockStats.leadsCount,
-    icon: UserPlus,
-    suffix: "",
-    sub: `Pipeline: ${formatINRShort(mockStats.leadsPipelineValue)}`,
-    color: "text-blue-400",
-  },
-];
+function RecentProjectsSkeleton() {
+  return (
+    <Card className="border-border bg-card text-card-foreground">
+      <CardHeader className="pb-3">
+        <Skeleton className="h-5 w-40" />
+      </CardHeader>
+      <CardContent className="space-y-1">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div
+            key={i}
+            className="flex items-center justify-between rounded-md px-3 py-2.5"
+          >
+            <div className="min-w-0 flex-1 space-y-2">
+              <Skeleton className="h-4 w-48 max-w-full" />
+              <Skeleton className="h-3 w-32 max-w-full" />
+            </div>
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-3 w-16" />
+              <Skeleton className="h-5 w-20 rounded-full" />
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function DashboardPage() {
-  const revenueGrowth =
-    ((mockStats.revenueThisMonth - mockStats.revenueLastMonth) /
-      mockStats.revenueLastMonth) *
-    100;
+  const { data, isLoading, error } = useDashboardStats();
+
+  const errMessage =
+    error instanceof Error ? error.message : error ? String(error) : null;
 
   return (
-    <div className="space-y-6">
-      {/* Page header */}
+    <div className="space-y-6 text-foreground">
       <div>
         <h1 className="text-2xl font-medium tracking-tight">Dashboard</h1>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -111,129 +70,135 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* Stats cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
-          <Card key={stat.label}>
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">{stat.label}</span>
-                <stat.icon className={`h-4 w-4 ${stat.color}`} />
-              </div>
-              <div className="mt-2 text-2xl font-semibold">
-                {stat.format === "inr"
-                  ? formatINRShort(stat.value)
-                  : stat.value}
-                {stat.suffix}
-              </div>
-              {stat.sub && (
-                <p className="mt-1 text-xs text-muted-foreground">{stat.sub}</p>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Revenue growth */}
-      {mockStats.overdueProjects > 0 && (
-        <Card className="border-destructive/30">
-          <CardContent className="flex items-center gap-3 p-4">
-            <AlertTriangle className="h-4 w-4 text-destructive" />
-            <span className="text-sm">
-              <strong>{mockStats.overdueProjects} projects</strong> have overdue
-              milestones that need attention
-            </span>
-          </CardContent>
+      {errMessage && (
+        <Card className="border-destructive/40 bg-card">
+          <CardContent className="p-4 text-sm text-destructive">{errMessage}</CardContent>
         </Card>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Recent projects */}
-        <Card>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {isLoading ? (
+          Array.from({ length: 6 }).map((_, i) => <StatCardSkeleton key={i} />)
+        ) : data ? (
+          <>
+            <Card className="border-border bg-card">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Active Projects</span>
+                  <Building2 className="h-4 w-4 text-primary" />
+                </div>
+                <div className="mt-2 text-2xl font-semibold">{data.activeProjects}</div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border bg-card">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Total Revenue</span>
+                  <IndianRupee className="h-4 w-4 text-primary" />
+                </div>
+                <div className="mt-2 text-2xl font-semibold text-primary">
+                  {formatINRShort(data.totalRevenue)}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border bg-card">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Pending Revenue</span>
+                  <TrendingUp className="h-4 w-4 text-primary" />
+                </div>
+                <div className="mt-2 text-2xl font-semibold text-primary">
+                  {formatINRShort(data.pendingRevenue)}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border bg-card">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Active Leads</span>
+                  <UserPlus className="h-4 w-4 text-primary" />
+                </div>
+                <div className="mt-2 text-2xl font-semibold">{data.totalLeads}</div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border bg-card">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Total Clients</span>
+                  <Users className="h-4 w-4 text-primary" />
+                </div>
+                <div className="mt-2 text-2xl font-semibold">{data.totalClients}</div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border bg-card">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Overdue Items</span>
+                  <AlertCircle
+                    className={`h-4 w-4 ${data.overdueInvoices > 0 ? "text-destructive" : "text-muted-foreground"}`}
+                  />
+                </div>
+                <div
+                  className={`mt-2 text-2xl font-semibold ${data.overdueInvoices > 0 ? "text-destructive" : ""}`}
+                >
+                  {data.overdueInvoices}
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        ) : null}
+      </div>
+
+      {isLoading ? (
+        <RecentProjectsSkeleton />
+      ) : data ? (
+        <Card className="border-border bg-card text-card-foreground">
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-medium">Recent Projects</CardTitle>
           </CardHeader>
           <CardContent className="space-y-1">
-            {mockRecentProjects.map((project) => (
-              <div
-                key={project.id}
-                className="flex items-center justify-between rounded-md px-3 py-2.5 transition-colors hover:bg-secondary/50"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium">{project.name}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {project.client}
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-muted-foreground">
-                    {formatINRShort(project.budget)}
-                  </span>
-                  <Badge
-                    variant="outline"
-                    className="text-[10px]"
-                    style={{
-                      borderColor: STAGE_COLORS[project.stage],
-                      color: STAGE_COLORS[project.stage],
-                    }}
-                  >
-                    {STAGE_LABELS[project.stage]}
-                  </Badge>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        {/* Quick stats */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-medium">
-              Revenue Summary
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-center gap-3">
-              <TrendingUp
-                className={`h-5 w-5 ${revenueGrowth >= 0 ? "text-green-400" : "text-destructive"}`}
-              />
-              <div>
-                <div className="text-sm font-medium">
-                  {revenueGrowth >= 0 ? "+" : ""}
-                  {revenueGrowth.toFixed(0)}% from last month
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {formatINR(mockStats.revenueLastMonth)} &rarr;{" "}
-                  {formatINR(mockStats.revenueThisMonth)}
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Project Stage Distribution
-              </div>
-              {Object.entries(STAGE_LABELS).map(([key, label]) => {
-                const count = mockRecentProjects.filter(
-                  (p) => p.stage === key
-                ).length;
-                return (
-                  <div key={key} className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="h-2 w-2 rounded-full"
-                        style={{ backgroundColor: STAGE_COLORS[key] }}
-                      />
-                      <span className="text-muted-foreground">{label}</span>
+            {data.recentProjects.length === 0 ? (
+              <p className="px-3 py-6 text-center text-sm text-muted-foreground">
+                No projects yet. Create a project to see it here.
+              </p>
+            ) : (
+              data.recentProjects.map((project) => (
+                <div
+                  key={project.id}
+                  className="flex items-center justify-between rounded-md px-3 py-2.5 transition-colors hover:bg-secondary/50"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium">{project.name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {project.client.name}
                     </div>
-                    <span className="font-medium">{count}</span>
                   </div>
-                );
-              })}
-            </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-muted-foreground">
+                      {project.budget != null ? formatINR(project.budget) : "—"}
+                    </span>
+                    <Badge
+                      variant="outline"
+                      className="text-[10px]"
+                      style={{
+                        borderColor: STAGE_COLORS[project.stage] ?? STAGE_COLORS.CONCEPT,
+                        color: STAGE_COLORS[project.stage] ?? STAGE_COLORS.CONCEPT,
+                      }}
+                    >
+                      {STAGE_LABELS[project.stage] ?? project.stage}
+                    </Badge>
+                  </div>
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
-      </div>
+      ) : null}
     </div>
   );
 }

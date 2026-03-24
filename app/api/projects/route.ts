@@ -5,7 +5,7 @@ import type { ApiResponse, ProjectWithRelations } from "@/types";
 
 export async function GET(request: NextRequest): Promise<NextResponse<ApiResponse<ProjectWithRelations[]>>> {
   try {
-    const { userId } = auth();
+    const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ data: null, error: "Unauthorized" }, { status: 401 });
     }
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
 
 export async function POST(request: NextRequest): Promise<NextResponse<ApiResponse<ProjectWithRelations>>> {
   try {
-    const { userId } = auth();
+    const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ data: null, error: "Unauthorized" }, { status: 401 });
     }

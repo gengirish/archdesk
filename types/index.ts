@@ -98,12 +98,14 @@ export type NavItem = {
   icon: string;
 };
 
+/** Shape returned by `GET /api/dashboard/stats` */
 export type DashboardStats = {
   activeProjects: number;
-  overdueProjects: number;
-  revenueThisMonth: number;
-  revenueLastMonth: number;
-  pendingApprovals: number;
-  leadsCount: number;
-  leadsPipelineValue: number;
+  completedProjects: number;
+  totalRevenue: number;
+  pendingRevenue: number;
+  totalClients: number;
+  totalLeads: number;
+  overdueInvoices: number;
+  recentProjects: (Project & { client: Client })[];
 };
