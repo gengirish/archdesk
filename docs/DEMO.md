@@ -37,7 +37,7 @@ npm run dev
 
 | Entity | Count | Highlights |
 |--------|------:|------------|
-| Firm | 1 | DesignCraft Studios, GST-registered, Hubbali |
+| Firm | 1 | DesignCraft Studios, GST-registered, Hubbali, **Enterprise plan** |
 | Users | 5 | All 5 roles (see below) |
 | Clients | 8 | Mix of residential, commercial, NRI |
 | Projects | 10 | 6 project types, 7 stages, Active/Completed/On-hold |
@@ -451,9 +451,10 @@ One desk for everything:
 | Site Tracker | Built (API CRUD, issues, photos) |
 | Vendors | Built (API CRUD complete) |
 | Settings | Built (API GET/PATCH) |
-| AI Cost Estimator | Built (interactive, Indian rates) |
+| AI Cost Estimator | Built (interactive, Indian rates, **PDF download**) |
 | Client Portal | Built (magic-link, project timeline) |
-| SaaS Plan Tiers | Built (Free/Pro/Enterprise gating) |
+| SaaS Plan Tiers | Built (Free/Pro/Enterprise, stored in Firm model) |
 | API routes | 16 endpoints |
 | Database | 15 Prisma models + comprehensive seed |
 | Demo data | **5 roles, 10 projects, 20 milestones, 12 drawings, 12 leads, 8 vendors, 6 issues** |
+| Demo plan | **Enterprise** — all features unlocked for demos |

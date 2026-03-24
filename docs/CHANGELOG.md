@@ -1,5 +1,24 @@
 # ArchDesk — Changelog
 
+## 2026-03-24 — Demo-ready environment & plan tier fix
+
+### Demo Environment
+- Expanded seed script with all 5 user roles (OWNER, ARCHITECT, DRAFTSMAN, SITE_MANAGER, ADMIN), 8 clients, 10 projects, 20 milestones, 14 invoices, 12 drawings with version history, 13 drawing comments (team + client), 12 leads across all pipeline stages, 15 lead activities, 8 vendors, 10 site updates, 6 site issues
+- Created real Clerk accounts for all 5 demo roles with email/password login for persona-based demos
+- Seed script now uses real Clerk IDs by default (override via env vars)
+
+### Plan Tier Fix
+- Added `plan` field to `Firm` model in Prisma schema (`@default("free")`)
+- Fixed `usePlan()` hook — was hardcoded to `"free"`, now reads plan from `/api/firm` response
+- Demo firm seeded as `"enterprise"` so all features are unlocked for demos
+
+### PDF Estimate Download
+- Created `components/estimate-pdf.tsx` — professional PDF layout with branded header, project inputs grid, construction cost breakdown table, interior fit-out table, summary box with GST, assumptions section, and footer
+- Wired "Download estimate" button on `/ai-estimator` to generate PDF via `@react-pdf/renderer` `pdf().toBlob()` (replaces placeholder)
+- Downloads as `ArchDesk-Estimate-{TYPE}-{AREA}sqft.pdf`
+
+---
+
 ## 2026-03-24 — Placeholder elimination (all 17 placeholders resolved)
 
 ### Wave 1 — Wire list pages to live data
@@ -23,7 +42,7 @@
 - **Global search** command palette (⌘K) in TopBar — searches across Projects, Clients, Leads with navigation
 - **Notifications dropdown** on bell icon — fetches recent activity from analytics API, shows relative timestamps
 - **Feature gate enforcement** on 5 Pro pages (Drawings, Site Tracker, Leads, Vendors, AI Estimator) using `FeatureGate` component
-- New `hooks/usePlan.ts` — returns current plan tier (hardcoded to `"free"` for demo, extensible to firm subscription)
+- New `hooks/usePlan.ts` — returns current plan tier from `/api/firm` response
 
 ### Wave 4 — Analytics + Cleanup
 - **Analytics page** `/analytics` — cash flow summary, 12-month revenue bars, projects by stage/type, lead conversion rate, top clients table, recent activity feed

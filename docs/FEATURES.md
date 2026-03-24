@@ -278,6 +278,11 @@ Instant, professional cost estimates for Indian construction projects. The demo 
 - Timeline estimate based on area
 - Assumptions list
 
+**PDF Download:**
+- "Download estimate" button generates a professional PDF via `@react-pdf/renderer`
+- PDF includes branded header, project inputs grid, cost breakdown table, interior table, GST summary box, assumptions, and footer
+- File saved as `ArchDesk-Estimate-{TYPE}-{AREA}sqft.pdf`
+
 **API:** `POST /api/ai/cost-estimate`
 
 ---
@@ -327,7 +332,12 @@ Three-tier business model with feature gating.
 | White Label | — | — | Yes |
 | API Access | — | — | Yes |
 
-**Implementation:** `lib/feature-tiers.ts` (plan hierarchy, feature-to-plan mapping, `hasAccess()`, `getRequiredPlan()`), `components/feature-gate.tsx` (upgrade prompt UI), plan badges on sidebar navigation.
+**Implementation:**
+- `Firm.plan` field in Prisma schema (`"free"` | `"pro"` | `"enterprise"`, default `"free"`)
+- `lib/feature-tiers.ts` — plan hierarchy, feature-to-plan mapping, `hasAccess()`, `getRequiredPlan()`
+- `hooks/usePlan.ts` — reads plan from `/api/firm` response
+- `components/feature-gate.tsx` — upgrade prompt UI wrapping gated pages
+- Plan badges (PRO, AI, ENT) on sidebar navigation
 
 ---
 
