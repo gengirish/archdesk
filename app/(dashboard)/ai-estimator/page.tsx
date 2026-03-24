@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { pdf } from "@react-pdf/renderer";
 import {
   Calculator,
   Building2,
@@ -25,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn, formatINR, formatINRShort } from "@/lib/utils";
+import { EstimatePdfDocument } from "@/components/estimate-pdf";
 import type { CostEstimateResult } from "@/app/api/ai/cost-estimate/route";
 import type { ApiResponse } from "@/types";
 
@@ -94,6 +96,7 @@ export default function AIEstimatorPage() {
   const [includeInterior, setIncludeInterior] = useState(false);
 
   const [loading, setLoading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CostEstimateResult | null>(null);
   const [barPhase, setBarPhase] = useState(false);
@@ -356,73 +359,43 @@ export default function AIEstimatorPage() {
                   variant="outline"
                   size="sm"
                   className="border-border"
-                  disabled={!result}
-                  onClick={() => {
+                  disabled={!result || downloading}
+                  onClick={async () => {
                     if (!result) return;
-                    const lines: string[] = [
-                      "ARCHDESK — CONSTRUCTION COST ESTIMATE",
-                      "=" .repeat(50),
-                      "",
-                      `Project Type     : ${projectType}`,
-                      `Built-up Area    : ${areaNum.toLocaleString("en-IN")} sq ft`,
-                      `Quality          : ${quality.charAt(0).toUpperCase() + quality.slice(1)}`,
-                      `Location         : ${location}`,
-                      `Floors           : ${floorsNum}`,
-                      `Interior Fit-out : ${includeInterior ? "Yes" : "No"}`,
-                      "",
-                      "-".repeat(50),
-                      "COST BREAKDOWN",
-                      "-".repeat(50),
-                      "",
-                      "Category".padEnd(30) + "Amount (₹)".padStart(18) + "%".padStart(6),
-                    ];
-                    result.breakdown.forEach((row) => {
-                      lines.push(
-                        row.category.padEnd(30) +
-                          formatINR(row.amount).padStart(18) +
-                          `${row.percentage}%`.padStart(6)
-                      );
-                    });
-                    if (result.interiorBreakdown?.length) {
-                      lines.push("", "INTERIOR FIT-OUT", "");
-                      result.interiorBreakdown.forEach((row) => {
-                        lines.push(
-                          row.category.padEnd(30) + formatINR(row.amount).padStart(18)
-                        );
-                      });
+                    setDownloading(true);
+                    try {
+                      const blob = await pdf(
+                        <EstimatePdfDocument
+                          result={result}
+                          inputs={{
+                            projectType,
+                            area: areaNum,
+                            quality,
+                            location,
+                            floors: floorsNum,
+                            includeInterior,
+                          }}
+                        />
+                      ).toBlob();
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `ArchDesk-Estimate-${projectType}-${areaNum}sqft.pdf`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    } catch {
+                      setError("Could not generate PDF. Please try again.");
+                    } finally {
+                      setDownloading(false);
                     }
-                    lines.push(
-                      "",
-                      "-".repeat(50),
-                      "SUMMARY",
-                      "-".repeat(50),
-                      "",
-                      `Subtotal (ex-GST)  : ${formatINR(result.summary.totalCost)}`,
-                      `GST @ 18%          : ${formatINR(result.summary.gstAmount)}`,
-                      `Grand Total        : ${formatINR(result.summary.grandTotal)}`,
-                      `Cost per sq ft     : ${formatINR(result.summary.costPerSqFt)}`,
-                      `Rate Band          : ${formatINR(result.rateRange.min)} – ${formatINR(result.rateRange.max)} / sq ft`,
-                      `Timeline           : ${result.timeline}`,
-                      "",
-                      "ASSUMPTIONS",
-                      "",
-                      ...result.assumptions.map((a) => `• ${a}`),
-                      "",
-                      "-".repeat(50),
-                      `Generated by ArchDesk on ${new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}`,
-                      "https://archdesk.vercel.app",
-                    );
-                    const blob = new Blob([lines.join("\n")], { type: "text/plain" });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement("a");
-                    a.href = url;
-                    a.download = `ArchDesk-Estimate-${projectType}-${areaNum}sqft.txt`;
-                    a.click();
-                    URL.revokeObjectURL(url);
                   }}
                 >
-                  <Download className="mr-1.5 h-3.5 w-3.5" />
-                  Download estimate
+                  {downloading ? (
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Download className="mr-1.5 h-3.5 w-3.5" />
+                  )}
+                  {downloading ? "Generating PDF…" : "Download estimate"}
                 </Button>
                 <Button type="button" size="sm" className="bg-primary text-primary-foreground" asChild>
                   <Link href="/projects">
