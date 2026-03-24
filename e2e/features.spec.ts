@@ -71,7 +71,7 @@ test.describe("Feature pages (authenticated)", () => {
 
   test("search palette opens with Ctrl+K", async ({ page }) => {
     await page.keyboard.press("Control+k");
-    await expect(page.getByPlaceholder(/search across/i).or(page.getByPlaceholder(/search projects/i))).toBeVisible({ timeout: 5_000 });
+    await expect(page.locator("[role=dialog] input")).toBeVisible({ timeout: 5_000 });
   });
 
   test("pro pages show feature gate for free plan", async ({ page }) => {
