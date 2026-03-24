@@ -64,6 +64,7 @@ async function main() {
       state: "Karnataka",
       brandColor: "#E8A045",
       website: "https://designcraft.in",
+      plan: "enterprise",
     },
   });
 

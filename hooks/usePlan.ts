@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import type { PlanTier } from "@/lib/feature-tiers";
+import { PLAN_HIERARCHY } from "@/lib/feature-tiers";
 
 export function usePlan(): { plan: PlanTier; isLoading: boolean } {
-  const { isLoading } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["firm"],
     queryFn: async () => {
       const res = await fetch("/api/firm");
@@ -13,7 +14,10 @@ export function usePlan(): { plan: PlanTier; isLoading: boolean } {
     staleTime: 1000 * 60 * 5,
   });
 
-  const plan: PlanTier = "free";
+  const raw = data?.plan as string | undefined;
+  const plan: PlanTier = raw && PLAN_HIERARCHY.includes(raw as PlanTier)
+    ? (raw as PlanTier)
+    : "free";
 
   return { plan, isLoading };
 }

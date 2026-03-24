@@ -27,6 +27,7 @@ model Firm {
   state       String   @default("Karnataka")
   brandColor  String   @default("#E8A045")
   website     String?
+  plan        String   @default("free")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
