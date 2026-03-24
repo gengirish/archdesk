@@ -281,7 +281,7 @@ Each project has a unique `clientToken`. Clients access their project via `/port
 | Framework | Next.js 14 (App Router, TypeScript strict) |
 | UI | Tailwind CSS + shadcn/ui |
 | Auth | Clerk |
-| Database | Prisma ORM + Supabase Postgres |
+| Database | Prisma ORM + Neon PostgreSQL |
 | File Storage | Supabase Storage |
 | Client State | Zustand |
 | Server State | TanStack React Query |
@@ -289,7 +289,37 @@ Each project has a unique `clientToken`. Clients access their project via `/port
 | Payments | Razorpay (UPI, cards, net banking) |
 | Email | Resend |
 | PDF | @react-pdf/renderer |
-| Hosting | Vercel |
+| E2E Testing | Playwright + @clerk/testing |
+| Hosting | Vercel (primary), Fly.io (Mumbai) |
+
+---
+
+## E2E Test Coverage
+
+26 Playwright tests covering four areas:
+
+| Suite | Tests | What's verified |
+|-------|-------|-----------------|
+| Landing Page | 8 | Nav, hero, features, Indian market section, footer, navigation |
+| Authentication | 5 | Clerk sign-in/sign-up forms render, unauthenticated redirect |
+| API Routes | 4 | All endpoints reject unauthenticated requests |
+| Dashboard | 9 | Sign-in via API token, sidebar nav, search, user avatar, page navigation |
+
+**Run locally:** `npm run test:e2e`
+**Run against production:** `BASE_URL=https://archdesk.vercel.app npm run test:e2e`
+
+Authenticated tests use Clerk Backend API sign-in tokens to bypass 2FA.
+
+---
+
+## Deployment
+
+| Platform | URL | Region |
+|----------|-----|--------|
+| Vercel (primary) | https://archdesk.vercel.app | Edge (global) |
+| Fly.io | https://archdesk.fly.dev | Mumbai (bom) |
+| Database | Neon PostgreSQL | US East |
+| GitHub | https://github.com/gengirish/archdesk | — |
 
 ---
 
