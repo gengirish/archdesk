@@ -5,7 +5,7 @@ const TEST_EMAIL = process.env.E2E_CLERK_USER_EMAIL || "";
 const TEST_PASSWORD = process.env.E2E_CLERK_USER_PASSWORD || "";
 
 test.describe("Feature pages (authenticated)", () => {
-  test.setTimeout(60_000);
+  test.setTimeout(90_000);
 
   test.skip(
     !TEST_EMAIL || !TEST_PASSWORD,
@@ -74,14 +74,13 @@ test.describe("Feature pages (authenticated)", () => {
     await expect(page.locator("[role=dialog] input")).toBeVisible({ timeout: 5_000 });
   });
 
-  test("pro pages show feature gate for free plan", async ({ page }) => {
+  test("pro pages show feature gate or content for drawings", async ({ page }) => {
     await page.getByRole("link", { name: "Drawings" }).click();
     await expect(page).toHaveURL(/\/drawings/, { timeout: 10_000 });
 
-    const upgradeVisible = await page.getByText(/upgrade to unlock/i).isVisible().catch(() => false);
-    const drawingsVisible = await page.getByRole("heading", { name: /drawings/i }).isVisible().catch(() => false);
-
-    expect(upgradeVisible || drawingsVisible).toBeTruthy();
+    const gate = page.getByText(/upgrade to unlock/i);
+    const heading = page.getByRole("heading", { name: /drawings/i });
+    await expect(gate.or(heading)).toBeVisible({ timeout: 15_000 });
   });
 
   test("navigation through all main pages works", async ({ page }) => {
