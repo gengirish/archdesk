@@ -66,11 +66,56 @@ function sourceTypeFromExtension(ext: string): FloorPlanSourceType {
   return FloorPlanSourceType.IMAGE;
 }
 
-function fallbackPlan(): FloorPlanPayload {
-  return rectanglePlan(12000, 9000, true);
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
 }
 
-function rectanglePlan(widthMm: number, heightMm: number, withCenterWall: boolean): FloorPlanPayload {
+function hashBytes(bytes: Uint8Array): number {
+  let hash = 2166136261;
+  for (let index = 0; index < bytes.length; index += 1) {
+    hash ^= bytes[index];
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function seededUnit(seed: number, salt: number): number {
+  const x = Math.imul(seed ^ salt, 2654435761) >>> 0;
+  return x / 4294967295;
+}
+
+function seededInteriorWalls(widthMm: number, heightMm: number, seed: number): WallSegment[] {
+  const walls: WallSegment[] = [];
+  const wallCount = 2 + Math.floor(seededUnit(seed, 101) * 4); // 2..5
+
+  for (let index = 0; index < wallCount; index += 1) {
+    const vertical = seededUnit(seed, 200 + index) >= 0.5;
+    if (vertical) {
+      const x = Math.round(widthMm * clamp(0.2 + seededUnit(seed, 300 + index) * 0.6, 0.15, 0.85));
+      const y1 = Math.round(heightMm * clamp(0.08 + seededUnit(seed, 400 + index) * 0.2, 0.05, 0.3));
+      const y2 = Math.round(heightMm * clamp(0.65 + seededUnit(seed, 500 + index) * 0.3, 0.6, 0.95));
+      walls.push({ start: { x, y: Math.min(y1, y2) }, end: { x, y: Math.max(y1, y2) } });
+      continue;
+    }
+
+    const y = Math.round(heightMm * clamp(0.2 + seededUnit(seed, 600 + index) * 0.6, 0.15, 0.85));
+    const x1 = Math.round(widthMm * clamp(0.08 + seededUnit(seed, 700 + index) * 0.2, 0.05, 0.3));
+    const x2 = Math.round(widthMm * clamp(0.65 + seededUnit(seed, 800 + index) * 0.3, 0.6, 0.95));
+    walls.push({ start: { x: Math.min(x1, x2), y }, end: { x: Math.max(x1, x2), y } });
+  }
+
+  return walls;
+}
+
+function fallbackPlan(seed = 1): FloorPlanPayload {
+  return rectanglePlan(12000, 9000, { withCenterWall: true, seed });
+}
+
+function rectanglePlan(
+  widthMm: number,
+  heightMm: number,
+  options?: { withCenterWall?: boolean; seed?: number }
+): FloorPlanPayload {
   const w = Math.max(2000, Math.round(widthMm));
   const h = Math.max(2000, Math.round(heightMm));
 
@@ -88,8 +133,11 @@ function rectanglePlan(widthMm: number, heightMm: number, withCenterWall: boolea
     { start: { x: 0, y: h }, end: { x: 0, y: 0 } },
   ];
 
-  if (withCenterWall) {
+  if (options?.withCenterWall) {
     walls.push({ start: { x: Math.round(w / 2), y: 0 }, end: { x: Math.round(w / 2), y: Math.round(h * 0.62) } });
+  }
+  if (options?.seed !== undefined) {
+    walls.push(...seededInteriorWalls(w, h, options.seed));
   }
 
   return {
@@ -168,36 +216,72 @@ function webpDimensions(bytes: Uint8Array): { width: number; height: number } | 
 }
 
 function imagePlanFromBytes(ext: string, bytes: Uint8Array): FloorPlanPayload {
+  const seed = hashBytes(bytes.subarray(0, Math.min(bytes.length, 100_000)));
   const dims =
     (ext === "png" ? pngDimensions(bytes) : null) ||
     ((ext === "jpg" || ext === "jpeg") ? jpegDimensions(bytes) : null) ||
     (ext === "webp" ? webpDimensions(bytes) : null);
 
-  if (!dims) return fallbackPlan();
+  if (!dims) return fallbackPlan(seed);
 
   const longestPx = Math.max(dims.width, dims.height);
   const scale = longestPx > 0 ? 12000 / longestPx : 1;
   const widthMm = dims.width * scale;
   const heightMm = dims.height * scale;
-  return rectanglePlan(widthMm, heightMm, true);
+  return rectanglePlan(widthMm, heightMm, { withCenterWall: true, seed });
+}
+
+function parsePdfVectorLineWalls(snippet: string): WallSegment[] {
+  const walls: WallSegment[] = [];
+  const lineRegex =
+    /(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+m\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+l/g;
+
+  let match: RegExpExecArray | null = lineRegex.exec(snippet);
+  while (match) {
+    const x1 = Number.parseFloat(match[1]);
+    const y1 = Number.parseFloat(match[2]);
+    const x2 = Number.parseFloat(match[3]);
+    const y2 = Number.parseFloat(match[4]);
+    if (
+      Number.isFinite(x1) &&
+      Number.isFinite(y1) &&
+      Number.isFinite(x2) &&
+      Number.isFinite(y2) &&
+      !(x1 === x2 && y1 === y2)
+    ) {
+      walls.push({
+        start: { x: x1, y: y1 },
+        end: { x: x2, y: y2 },
+      });
+    }
+    match = lineRegex.exec(snippet);
+  }
+
+  return walls;
 }
 
 function pdfPlanFromBytes(bytes: Uint8Array): FloorPlanPayload {
+  const seed = hashBytes(bytes.subarray(0, Math.min(bytes.length, 250_000)));
   const snippet = new TextDecoder("latin1")
-    .decode(bytes.subarray(0, Math.min(bytes.length, 900_000)))
+    .decode(bytes.subarray(0, Math.min(bytes.length, 1_800_000)))
     .replace(/\r/g, "\n");
 
+  const vectorWalls = parsePdfVectorLineWalls(snippet);
+  if (vectorWalls.length >= 4) {
+    return normalizeWallsToPlan(vectorWalls, seed);
+  }
+
   const match = snippet.match(/\/MediaBox\s*\[\s*-?\d+(?:\.\d+)?\s+-?\d+(?:\.\d+)?\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s*\]/);
-  if (!match) return fallbackPlan();
+  if (!match) return fallbackPlan(seed);
 
   const widthPt = Math.abs(Number.parseFloat(match[1]));
   const heightPt = Math.abs(Number.parseFloat(match[2]));
   if (!Number.isFinite(widthPt) || !Number.isFinite(heightPt) || widthPt <= 0 || heightPt <= 0) {
-    return fallbackPlan();
+    return fallbackPlan(seed);
   }
 
   const ptToMm = 0.352778;
-  return rectanglePlan(widthPt * ptToMm, heightPt * ptToMm, true);
+  return rectanglePlan(widthPt * ptToMm, heightPt * ptToMm, { withCenterWall: true, seed });
 }
 
 function parseDxfLines(text: string): WallSegment[] {
@@ -277,8 +361,8 @@ function parseDxfLines(text: string): WallSegment[] {
   });
 }
 
-function normalizeWallsToPlan(walls: WallSegment[]): FloorPlanPayload {
-  if (walls.length === 0) return fallbackPlan();
+function normalizeWallsToPlan(walls: WallSegment[], seed?: number): FloorPlanPayload {
+  if (walls.length === 0) return fallbackPlan(seed ?? 1);
 
   const points = walls.flatMap((wall) => [wall.start, wall.end]);
   const minX = Math.min(...points.map((p) => p.x));
@@ -288,7 +372,7 @@ function normalizeWallsToPlan(walls: WallSegment[]): FloorPlanPayload {
 
   const rawWidth = maxX - minX;
   const rawHeight = maxY - minY;
-  if (!(rawWidth > 0) || !(rawHeight > 0)) return fallbackPlan();
+  if (!(rawWidth > 0) || !(rawHeight > 0)) return fallbackPlan(seed ?? 1);
 
   const longest = Math.max(rawWidth, rawHeight);
   const metersLikely = longest <= 50;
@@ -312,7 +396,10 @@ function normalizeWallsToPlan(walls: WallSegment[]): FloorPlanPayload {
 
   const widthMm = Math.max(2000, Math.round(scaledWidth * normalizeScale));
   const heightMm = Math.max(2000, Math.round(scaledHeight * normalizeScale));
-  const boundary = rectanglePlan(widthMm, heightMm, false);
+  const boundary = rectanglePlan(widthMm, heightMm, {
+    withCenterWall: false,
+    seed,
+  });
 
   return {
     schemaVersion: FLOOR_PLAN_SCHEMA_VERSION,
@@ -322,9 +409,10 @@ function normalizeWallsToPlan(walls: WallSegment[]): FloorPlanPayload {
 }
 
 function dxfPlanFromBytes(bytes: Uint8Array): FloorPlanPayload {
+  const seed = hashBytes(bytes.subarray(0, Math.min(bytes.length, 250_000)));
   const text = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
   const lines = parseDxfLines(text);
-  return normalizeWallsToPlan(lines);
+  return normalizeWallsToPlan(lines, seed);
 }
 
 export async function toFloorPlanFromUpload(file: File): Promise<UploadParseResult> {
