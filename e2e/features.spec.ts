@@ -54,6 +54,7 @@ test.describe("Feature pages (authenticated)", () => {
     await expect(page).toHaveURL(/\/billing/, { timeout: 10_000 });
     await expect(page.getByRole("heading", { name: /billing/i })).toBeVisible();
     await expect(page.getByText(/total billed/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/client decision/i)).toBeVisible({ timeout: 10_000 });
   });
 
   test("settings page loads firm data and has Save button", async ({ page }) => {
@@ -81,6 +82,15 @@ test.describe("Feature pages (authenticated)", () => {
     const gate = page.getByText(/upgrade to unlock/i);
     const heading = page.getByRole("heading", { name: /drawings/i });
     await expect(gate.or(heading)).toBeVisible({ timeout: 15_000 });
+  });
+
+  test("analytics page shows gate or decision insights", async ({ page }) => {
+    await page.getByRole("link", { name: "Analytics" }).click();
+    await expect(page).toHaveURL(/\/analytics/, { timeout: 10_000 });
+
+    const gate = page.getByText(/upgrade to unlock/i);
+    const insights = page.getByText(/client decision insights/i);
+    await expect(gate.or(insights)).toBeVisible({ timeout: 15_000 });
   });
 
   test("navigation through all main pages works", async ({ page }) => {

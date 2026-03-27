@@ -330,6 +330,48 @@ If `stage` changes, a `LeadActivity` with `type: STAGE_CHANGE` and note `{old} �
 
 ---
 
+### `PATCH /api/projects/[id]/milestones/[milestoneId]/client-review`
+
+**Auth:** Required
+
+**Purpose:** Open or close client decision collection for a milestone.
+Enterprise-only (firm plan must be `enterprise`).
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `open` | boolean | Yes | `true` opens decision request in client portal, `false` closes it |
+
+**Response:** `{ data: Milestone, error: null }`
+
+**Status codes:** 200, 400, 401, 403, 404, 500
+
+---
+
+### `POST /api/projects/[id]/milestones/[milestoneId]/client-nudge`
+
+**Auth:** Required
+
+**Purpose:** Send/queue a client reminder for an open milestone decision request.
+Enterprise-only (firm plan must be `enterprise`).
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `channel` | `"email"` \| `"whatsapp"` | No | Defaults to `"email"` |
+| `message` | string | No | Optional custom message, max 500 chars |
+
+Request is accepted only if `clientDecisionOpen=true` for the milestone.
+Email channel uses Resend. WhatsApp is routed through a provider abstraction (current default: queue/stub).
+
+**Response:** `{ data: { queued, channel, nudgeId, status, queuedAt, projectId, projectName, milestoneId, milestoneName, client }, error: null }`
+
+**Status codes:** 200, 400, 401, 403, 404, 409, 500, 502 (provider delivery failure)
+
+---
+
 ## Project: Site updates
 
 ### `GET /api/projects/[id]/site-updates`
@@ -425,7 +467,7 @@ Only these keys are applied (others ignored). At least one must be present or **
 
 **Auth:** Required
 
-**Response:** `{ data: { revenueByMonth, projectsByStage, projectsByType, leadConversion, topClients, cashFlow, recentActivity }, error: null }`
+**Response:** `{ data: { revenueByMonth, projectsByStage, projectsByType, leadConversion, topClients, cashFlow, decisionInsights, recentActivity }, error: null }`
 
 | Field | Description |
 |-------|-------------|
@@ -434,6 +476,7 @@ Only these keys are applied (others ignored). At least one must be present or **
 | `leadConversion` | `total`, `won`, `lost`, `rate` (% won ÷ total leads) |
 | `topClients` | Top 5 by summed project `budget` |
 | `cashFlow` | `totalReceived`, `totalPending`, `totalOverdue`, `projectedNextMonth` |
+| `decisionInsights` | 30-day client decision KPIs: `totalDecisionsLast30Days`, `approvedLast30Days`, `rejectedLast30Days`, `approvalRate`, `openDecisionRequests`, `avgResponseHours`, `bottlenecksByProject` (top 5 by open/delay risk, each with `projectId`, `projectName`, `openRequests`, `oldestOpenHours`, `avgResponseHours`, `decisionsLast30Days`) |
 | `recentActivity` | Up to 10 mixed items (`site_update`, `lead_activity`, `invoice_payment`) with ISO `date` |
 
 **Status codes:** 200, 401, 404, 500
@@ -507,9 +550,47 @@ Computes GST from milestone `amount` + `gstPercent`, next firm invoice number, c
 
 **Response:** `{ data: PortalProject, error: null }`
 
-Includes `firm`, `client`, `milestones` (with `invoices`), `drawings` (**only** `status: APPROVED`, no nested versions/comments in this route), `siteUpdates` (latest **10**).
+Includes `firm`, `client`, `milestones` (with `invoices`), `drawings` (**only** `status: APPROVED`, no nested versions/comments in this route), `siteUpdates` (latest **10**), `pendingMilestoneDecisions` (where `clientDecisionOpen=true`), and `recentClientDecisions` (latest 10 responses with milestone summary).
 
 **Status codes:** 200, 404 (`Not found` for missing/empty token or unknown token), 500
+
+---
+
+### `GET /api/portal/[token]/decisions` — **Public**
+
+**Auth:** None (`clientToken` on project)
+
+**Response:** `{ data: { pendingMilestoneDecisions, recentDecisions }, error: null }`
+
+- `pendingMilestoneDecisions`: open milestone decision cards for this project
+- `recentDecisions`: latest 10 submitted client decisions with milestone context
+
+**Status codes:** 200, 404, 500
+
+---
+
+### `POST /api/portal/[token]/decisions` — **Public**
+
+**Auth:** None (`clientToken` on project)
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `milestoneId` | string | Yes | Milestone ID within token's project |
+| `outcome` | `ClientDecisionOutcome` | Yes | `APPROVED` or `REJECTED` |
+| `comment` | string | Yes | Trimmed comment, 1-2000 chars |
+| `respondentName` | string | No | Optional client name |
+| `costDeltaAmount` | number | No | Optional price delta metadata |
+| `costDeltaNote` | string | No | Optional context for cost delta |
+
+Creates a decision row and atomically closes milestone review (`clientDecisionOpen=false`).
+Supports optional `Idempotency-Key` header (8-128 chars).  
+POST route is rate-limited per token/IP window and can return 429 with `Retry-After`.
+
+**Response:** `{ data: ClientDecision, error: null }` (201)
+
+**Status codes:** 200 (idempotent replay), 201, 400, 404, 409 (`This decision request is closed`), 429, 500
 
 ---
 
@@ -576,3 +657,12 @@ Includes `firm`, `client`, `milestones` (with `invoices`), `drawings` (**only** 
 
 ### IssueStatus
 `OPEN` | `IN_PROGRESS` | `RESOLVED` | `CLOSED`
+
+### ClientDecisionOutcome
+`APPROVED` | `REJECTED`
+
+### ClientNudgeChannel
+`EMAIL` | `WHATSAPP`
+
+### ClientNudgeStatus
+`QUEUED` | `SENT` | `FAILED`

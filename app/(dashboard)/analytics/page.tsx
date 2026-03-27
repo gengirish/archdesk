@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   IndianRupee,
   Clock,
@@ -9,6 +10,7 @@ import {
   UserPlus,
   Loader2,
   Bell,
+  ClipboardCheck,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -373,6 +375,95 @@ export default function AnalyticsPage() {
                   </div>
                   <Progress value={Math.min(100, Math.max(0, data.leadConversion.rate))} />
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border bg-card text-card-foreground">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-medium">Client Decision Insights</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <div className="rounded-lg border border-border/60 bg-secondary/20 px-3 py-3">
+                    <div className="text-xs text-muted-foreground">Last 30 days</div>
+                    <div className="mt-1 text-xl font-semibold tabular-nums">
+                      {data.decisionInsights.totalDecisionsLast30Days}
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-border/60 bg-secondary/20 px-3 py-3">
+                    <div className="text-xs text-muted-foreground">Open requests</div>
+                    <div className="mt-1 text-xl font-semibold tabular-nums text-yellow-400">
+                      {data.decisionInsights.openDecisionRequests}
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-border/60 bg-secondary/20 px-3 py-3">
+                    <div className="text-xs text-muted-foreground">Avg response</div>
+                    <div className="mt-1 text-xl font-semibold tabular-nums text-primary">
+                      {data.decisionInsights.avgResponseHours}h
+                    </div>
+                  </div>
+                </div>
+                <div className="rounded-lg border border-border/60 bg-secondary/20 px-3 py-3">
+                  <div className="mb-2 flex items-center justify-between text-xs">
+                    <span className="inline-flex items-center gap-1 text-muted-foreground">
+                      <ClipboardCheck className="h-3.5 w-3.5" />
+                      Approval rate
+                    </span>
+                    <span className="font-medium tabular-nums text-primary">
+                      {data.decisionInsights.approvalRate}%
+                    </span>
+                  </div>
+                  <Progress value={Math.min(100, Math.max(0, data.decisionInsights.approvalRate))} />
+                  <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
+                    <span>Approved: {data.decisionInsights.approvedLast30Days}</span>
+                    <span>Rejected: {data.decisionInsights.rejectedLast30Days}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border bg-card text-card-foreground">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-medium">Decision Bottlenecks by Project</CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  Highest-risk projects by open requests and delayed responses.
+                </p>
+              </CardHeader>
+              <CardContent>
+                {data.decisionInsights.bottlenecksByProject.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No decision bottlenecks detected.</p>
+                ) : (
+                  <div className="divide-y divide-border/50">
+                    <div className="grid grid-cols-[1.5fr_auto_auto_auto_auto_auto] gap-3 pb-3 text-xs font-medium text-muted-foreground">
+                      <span>Project</span>
+                      <span className="text-right">Open</span>
+                      <span className="text-right">Oldest Open</span>
+                      <span className="text-right">Avg Response</span>
+                      <span className="text-right">30d Decisions</span>
+                      <span className="text-right">Action</span>
+                    </div>
+                    {data.decisionInsights.bottlenecksByProject.map((row) => (
+                      <div
+                        key={row.projectId}
+                        className="grid grid-cols-[1.5fr_auto_auto_auto_auto_auto] items-center gap-3 py-3 text-sm"
+                      >
+                        <span className="truncate font-medium">{row.projectName}</span>
+                        <span className="text-right tabular-nums">{row.openRequests}</span>
+                        <span className="text-right tabular-nums text-yellow-400">{row.oldestOpenHours}h</span>
+                        <span className="text-right tabular-nums">{row.avgResponseHours}h</span>
+                        <span className="text-right tabular-nums text-muted-foreground">
+                          {row.decisionsLast30Days}
+                        </span>
+                        <Link
+                          href={`/billing?projectId=${encodeURIComponent(row.projectId)}&decision=open`}
+                          className="text-right text-xs font-medium text-primary underline-offset-4 hover:underline"
+                        >
+                          View
+                        </Link>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
 

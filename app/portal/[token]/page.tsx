@@ -5,6 +5,7 @@ import { FileText, MapPin, CalendarDays, Camera, CheckCircle2, Circle } from "lu
 import { db } from "@/lib/db";
 import { formatINR, formatDate, calculateGST, STAGE_LABELS, isOverdue } from "@/lib/utils";
 import type { MilestoneStatus, ProjectStage } from "@prisma/client";
+import { MilestoneDecisionCard } from "@/components/portal/milestone-decision-card";
 
 const STAGE_ORDER: ProjectStage[] = [
   "CONCEPT",
@@ -58,6 +59,39 @@ export default async function ClientPortalPage({ params }: { params: { token: st
   if (!project) notFound();
 
   const { firm, client, milestones, drawings, siteUpdates } = project;
+  const canUseClientDecisions = firm.plan === "enterprise";
+  const [pendingMilestoneDecisions, recentClientDecisions] = await Promise.all([
+    canUseClientDecisions
+      ? db.milestone.findMany({
+          where: {
+            projectId: project.id,
+            clientDecisionOpen: true,
+          },
+          orderBy: { createdAt: "asc" },
+          select: {
+            id: true,
+            name: true,
+            amount: true,
+            gstPercent: true,
+            dueDate: true,
+            stage: true,
+            description: true,
+          },
+        })
+      : Promise.resolve([]),
+    canUseClientDecisions
+      ? db.clientDecision.findMany({
+          where: { projectId: project.id },
+          orderBy: { createdAt: "desc" },
+          take: 10,
+          include: {
+            milestone: {
+              select: { name: true, stage: true },
+            },
+          },
+        })
+      : Promise.resolve([]),
+  ]);
   const accent = firm.brandColor || "#E8A045";
 
   const timelineLabel =
@@ -170,6 +204,48 @@ export default async function ClientPortalPage({ params }: { params: { token: st
             })}
           </ol>
         </section>
+
+        {canUseClientDecisions && (
+          <>
+            <section>
+              <h3 className="text-lg font-semibold text-slate-900">Decisions awaiting your approval</h3>
+              <p className="text-sm text-slate-600">Approve or reject milestone requests shared by your architect.</p>
+              <ul className="mt-6 space-y-4">
+                {pendingMilestoneDecisions.length === 0 && (
+                  <li className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+                    No decisions pending right now.
+                  </li>
+                )}
+                {pendingMilestoneDecisions.map((milestone) => (
+                  <MilestoneDecisionCard key={milestone.id} token={token} milestone={milestone} />
+                ))}
+              </ul>
+            </section>
+
+            <section>
+              <h3 className="text-lg font-semibold text-slate-900">Recent decisions</h3>
+              <p className="text-sm text-slate-600">Latest approval responses submitted from this portal.</p>
+              <ul className="mt-6 space-y-3">
+                {recentClientDecisions.length === 0 && (
+                  <li className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+                    No decisions recorded yet.
+                  </li>
+                )}
+                {recentClientDecisions.map((decision) => (
+                  <li key={decision.id} className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm">
+                    <p className="font-medium text-slate-900">
+                      {decision.milestone.name} · {decision.outcome === "APPROVED" ? "Approved" : "Rejected"}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {STAGE_LABELS[decision.milestone.stage] ?? decision.milestone.stage} · {formatDate(decision.createdAt)}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-700">{decision.comment}</p>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          </>
+        )}
 
         <section>
           <h3 className="text-lg font-semibold text-slate-900">Milestones & payments</h3>

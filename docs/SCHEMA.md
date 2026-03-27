@@ -1,6 +1,6 @@
 # ArchDesk — Database Schema Reference
 
-> PostgreSQL via Prisma ORM. 15 models, 14 enums.
+> PostgreSQL via Prisma ORM. 17 models, 17 enums.
 > Every query scopes to `firmId` for multi-tenant isolation.
 
 ---
@@ -82,7 +82,7 @@ Staff member linked to Clerk auth via `clerkId`.
 | deadline | DateTime? | Deadline |
 | clientToken | String | Unique cuid for portal access |
 
-**Relations:** team[], drawings[], milestones[], siteUpdates[], issues[]
+**Relations:** team[], drawings[], milestones[], clientDecisions[], clientNudges[], siteUpdates[], issues[]
 
 **Enum ProjectType:** `RESIDENTIAL` | `COMMERCIAL` | `INDUSTRIAL` | `INTERIOR` | `LANDSCAPE` | `INSTITUTIONAL`
 
@@ -171,8 +171,10 @@ Staff member linked to Clerk auth via `clerkId`.
 | status | MilestoneStatus | Default: UPCOMING |
 | paidAt | DateTime? | Payment date |
 | paidAmount | Float? | Amount received |
+| clientDecisionOpen | Boolean | Default: false; toggles client approval request visibility in portal |
+| clientDecisionOpenedAt | DateTime? | Timestamp when client decision request was opened (used for response-time analytics) |
 
-**Relations:** invoices[]
+**Relations:** invoices[], clientDecisions[], clientNudges[]
 
 **Enum MilestoneStatus:** `UPCOMING` | `DUE` | `UNPAID` | `PAID` | `OVERDUE`
 
@@ -196,6 +198,58 @@ Staff member linked to Clerk auth via `clerkId`.
 | razorpayOrderId | String? | Order ID |
 
 **Enum InvoiceStatus:** `DRAFT` | `UNPAID` | `PAID` | `OVERDUE` | `CANCELLED`
+
+---
+
+### ClientDecision
+
+Client response log for milestone decision requests initiated by the firm and submitted via client portal token.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| id | String | cuid, PK |
+| projectId | String | FK → Project |
+| milestoneId | String | FK → Milestone |
+| outcome | ClientDecisionOutcome | `APPROVED` or `REJECTED` |
+| comment | String | Required decision note |
+| costDeltaAmount | Float? | Optional quoted impact in INR |
+| costDeltaNote | String? | Optional explanation for delta |
+| respondentName | String? | Optional client name entered at submit time |
+| createdAt | DateTime | Default now() |
+
+**Indexes:** `[projectId, createdAt]`, `[milestoneId, createdAt]`
+
+**Enum ClientDecisionOutcome:** `APPROVED` | `REJECTED`
+
+---
+
+### ClientNudge
+
+Delivery audit log for staff-triggered reminder nudges on open client decision requests.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| id | String | cuid, PK |
+| projectId | String | FK → Project |
+| milestoneId | String | FK → Milestone |
+| requestedById | String? | FK → User |
+| channel | ClientNudgeChannel | `EMAIL` or `WHATSAPP` |
+| status | ClientNudgeStatus | `QUEUED`, `SENT`, or `FAILED` |
+| provider | String | Provider identifier (`resend`, `whatsapp-provider-stub`, etc.) |
+| providerMessageId | String? | Provider message/event ID |
+| idempotencyKey | String? | Provider idempotency key (if used) |
+| message | String? | Optional custom nudge message |
+| errorMessage | String? | Provider-level error when failed |
+| metadata | Json? | Client and portal metadata snapshot |
+| sentAt | DateTime? | Set when status is `SENT` |
+| createdAt | DateTime | Default now() |
+| updatedAt | DateTime | Auto-updated |
+
+**Indexes:** `[projectId, createdAt]`, `[milestoneId, createdAt]`, `[status, createdAt]`
+
+**Enum ClientNudgeChannel:** `EMAIL` | `WHATSAPP`
+
+**Enum ClientNudgeStatus:** `QUEUED` | `SENT` | `FAILED`
 
 ---
 

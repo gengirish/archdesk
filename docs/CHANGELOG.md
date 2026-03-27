@@ -1,5 +1,25 @@
 # ArchDesk — Changelog
 
+## 2026-03-26 — Client decision portal (phase 1)
+
+- Added `ClientDecision` model and `ClientDecisionOutcome` enum to Prisma schema, plus `Milestone.clientDecisionOpen` toggle and related indexes
+- Added staff endpoint `PATCH /api/projects/[id]/milestones/[milestoneId]/client-review` to open/close milestone decision collection
+- Added public portal decision APIs: `GET /api/portal/[token]/decisions` and `POST /api/portal/[token]/decisions` with token-scoped validation and transactional close-on-submit logic
+- Extended portal UI (`/portal/[token]`) with decision inbox, approve/reject form, and recent decision history
+- Replaced Billing page milestone table from mock data to live API data and added per-milestone toggle controls for decision request lifecycle
+- Added portal decision POST hardening: enterprise gating, request rate limiting (429 + `Retry-After`), and optional `Idempotency-Key` replay support
+- Added E2E coverage for portal decisions not-found/rate-limit behavior and billing visibility of client-decision controls
+- Added analytics `decisionInsights` aggregation and dashboard card (approval rate, open requests, avg response hours, 30-day decision counts)
+- Added `decisionInsights.bottlenecksByProject` aggregation and analytics table to spotlight delayed client decisions by project
+- Added analytics-to-billing deep links and billing URL filters (`projectId`, `decision=open`) for faster decision triage
+- Added enterprise-only `POST /api/projects/[id]/milestones/[milestoneId]/client-nudge` stub and Billing “Nudge client” action for open decision requests
+- Wired real email nudges via Resend and added `ClientNudge` persistence model for channel/status/provider auditability
+- Added WhatsApp nudge provider abstraction path (current default provider is queued stub) with unified delivery status handling
+- Added `Milestone.clientDecisionOpenedAt` for accurate decision response-time tracking
+- Updated docs (`docs/API.md`, `docs/SCHEMA.md`, `docs/FEATURES.md`) to reflect new schema, endpoints, and portal flow
+
+---
+
 ## 2026-03-24 — Demo-ready environment & plan tier fix
 
 ### Demo Environment

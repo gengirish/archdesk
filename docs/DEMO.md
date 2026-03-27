@@ -79,14 +79,14 @@ All 5 roles have real Clerk accounts for persona-based demos:
 
 | Client | Phone | City | Project(s) | Notes |
 |--------|-------|------|-----------|-------|
-| Rajesh Kulkarni | 9845012345 | Hubbali | Kulkarni Residence, Vidya Niketan School | Long-term client, WhatsApp preferred |
-| Lakshmi Hegde | 9900298765 | Hubbali | Hegde Villa, Hegde Garden (completed) | Detail-oriented, wants photo updates |
-| Vikram Patil | 9741234567 | Hubbali | Patil Farmhouse | NRI client — prefers email & portal |
-| Dr. Ananya Bhat | 9988776655 | Hubbali | Bhat Dental Clinic | Available after 6 PM only |
-| Siddharth Nadiger | 9880123456 | Dharwad | Nadiger Retail Showroom | Weekend meetings, showroom chain |
-| Meera Joshi | 9845098765 | Hubbali | Joshi Apartment Interiors | — |
-| Naveen Hosamani | 9743567890 | Hubbali | Hosamani Warehouse | Referred by Rajesh Kulkarni |
-| Savita Desai | 9886012345 | Hubbali | Desai Row Houses (on-hold) | — |
+| Rajesh Kulkarni | 7416642072 | Hubbali | Kulkarni Residence, Vidya Niketan School | Long-term client, WhatsApp preferred |
+| Lakshmi Hegde | 7416642072 | Hubbali | Hegde Villa, Hegde Garden (completed) | Detail-oriented, wants photo updates |
+| Vikram Patil | 7416642072 | Hubbali | Patil Farmhouse | NRI client — prefers email & portal |
+| Dr. Ananya Bhat | 7416642072 | Hubbali | Bhat Dental Clinic | Available after 6 PM only |
+| Siddharth Nadiger | 7416642072 | Dharwad | Nadiger Retail Showroom | Weekend meetings, showroom chain |
+| Meera Joshi | 7416642072 | Hubbali | Joshi Apartment Interiors | — |
+| Naveen Hosamani | 7416642072 | Hubbali | Hosamani Warehouse | Referred by Rajesh Kulkarni |
+| Savita Desai | 7416642072 | Hubbali | Desai Row Houses (on-hold) | — |
 
 ---
 

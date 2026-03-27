@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import type { ApiResponse } from "@/types";
-import type { Project, Firm, Client, Milestone, Invoice, Drawing, SiteUpdate } from "@prisma/client";
+import type { Project, Firm, Client, Milestone, Invoice, Drawing, SiteUpdate, ClientDecision } from "@prisma/client";
 
 export type PortalProjectPayload = Project & {
   firm: Firm;
@@ -9,6 +9,13 @@ export type PortalProjectPayload = Project & {
   milestones: (Milestone & { invoices: Invoice[] })[];
   drawings: Drawing[];
   siteUpdates: SiteUpdate[];
+  pendingMilestoneDecisions: Pick<
+    Milestone,
+    "id" | "name" | "amount" | "gstPercent" | "dueDate" | "stage" | "description"
+  >[];
+  recentClientDecisions: (ClientDecision & {
+    milestone: Pick<Milestone, "id" | "name" | "stage">;
+  })[];
 };
 
 export async function GET(
@@ -38,6 +45,15 @@ export async function GET(
           orderBy: { createdAt: "desc" },
           take: 10,
         },
+        clientDecisions: {
+          orderBy: { createdAt: "desc" },
+          take: 10,
+          include: {
+            milestone: {
+              select: { id: true, name: true, stage: true },
+            },
+          },
+        },
       },
     });
 
@@ -45,7 +61,31 @@ export async function GET(
       return NextResponse.json({ data: null, error: "Not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ data: project, error: null });
+    const canUseClientDecisions = project.firm.plan === "enterprise";
+    const pendingMilestoneDecisions = canUseClientDecisions
+      ? await db.milestone.findMany({
+          where: { projectId: project.id, clientDecisionOpen: true },
+          orderBy: { createdAt: "asc" },
+          select: {
+            id: true,
+            name: true,
+            amount: true,
+            gstPercent: true,
+            dueDate: true,
+            stage: true,
+            description: true,
+          },
+        })
+      : [];
+
+    return NextResponse.json({
+      data: {
+        ...project,
+        pendingMilestoneDecisions,
+        recentClientDecisions: canUseClientDecisions ? project.clientDecisions : [],
+      },
+      error: null,
+    });
   } catch (error) {
     console.error("[PORTAL_GET]", error);
     return NextResponse.json({ data: null, error: "Internal server error" }, { status: 500 });

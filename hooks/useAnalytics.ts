@@ -21,6 +21,22 @@ export type AnalyticsData = {
     totalOverdue: number;
     projectedNextMonth: number;
   };
+  decisionInsights: {
+    totalDecisionsLast30Days: number;
+    approvedLast30Days: number;
+    rejectedLast30Days: number;
+    approvalRate: number;
+    openDecisionRequests: number;
+    avgResponseHours: number;
+    bottlenecksByProject: {
+      projectId: string;
+      projectName: string;
+      openRequests: number;
+      oldestOpenHours: number;
+      avgResponseHours: number;
+      decisionsLast30Days: number;
+    }[];
+  };
   recentActivity: { type: string; description: string; date: string }[];
 };
 

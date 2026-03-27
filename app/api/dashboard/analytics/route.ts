@@ -1,5 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
-import { ActivityType, InvoiceStatus, LeadStage, MilestoneStatus } from "@prisma/client";
+import { ActivityType, ClientDecisionOutcome, InvoiceStatus, LeadStage, MilestoneStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { calculateGST } from "@/lib/utils";
@@ -57,6 +57,8 @@ export async function GET() {
     rangeStart.setHours(0, 0, 0, 0);
     const thirtyDaysAhead = new Date(now);
     thirtyDaysAhead.setDate(thirtyDaysAhead.getDate() + 30);
+    const decisionWindowStart = new Date(now);
+    decisionWindowStart.setDate(decisionWindowStart.getDate() - 30);
 
     const revenueBuckets = Object.fromEntries(monthKeys.map((k) => [k, 0])) as Record<string, number>;
     const invoicedBuckets = Object.fromEntries(monthKeys.map((k) => [k, 0])) as Record<string, number>;
@@ -77,6 +79,11 @@ export async function GET() {
       siteUpdates,
       leadActivities,
       paidInvoicesRecent,
+      pendingDecisionCount,
+      decisionOutcomeCounts,
+      recentDecisionsForLatency,
+      openDecisionMilestones,
+      decisionsForProjectBottlenecks,
     ] = await Promise.all([
       db.milestone.findMany({
         where: {
@@ -172,6 +179,65 @@ export async function GET() {
             select: {
               name: true,
               project: { select: { name: true } },
+            },
+          },
+        },
+      }),
+      db.milestone.count({
+        where: {
+          project: { firmId },
+          clientDecisionOpen: true,
+        },
+      }),
+      db.clientDecision.groupBy({
+        by: ["outcome"],
+        where: {
+          project: { firmId },
+          createdAt: { gte: decisionWindowStart },
+        },
+        _count: { _all: true },
+      }),
+      db.clientDecision.findMany({
+        where: {
+          project: { firmId },
+          createdAt: { gte: decisionWindowStart },
+        },
+        select: {
+          createdAt: true,
+          milestone: {
+            select: {
+              clientDecisionOpenedAt: true,
+            },
+          },
+        },
+      }),
+      db.milestone.findMany({
+        where: {
+          project: { firmId },
+          clientDecisionOpen: true,
+        },
+        select: {
+          projectId: true,
+          clientDecisionOpenedAt: true,
+          project: {
+            select: { name: true },
+          },
+        },
+      }),
+      db.clientDecision.findMany({
+        where: {
+          project: { firmId },
+          createdAt: { gte: decisionWindowStart },
+        },
+        select: {
+          projectId: true,
+          createdAt: true,
+          milestone: {
+            select: {
+              clientDecisionOpenedAt: true,
+              project: {
+                select: { name: true },
+              },
             },
           },
         },
@@ -272,6 +338,95 @@ export async function GET() {
       date: a.date.toISOString(),
     }));
 
+    const decisionTotal = decisionOutcomeCounts.reduce((sum, row) => sum + row._count._all, 0);
+    const approvedCount =
+      decisionOutcomeCounts.find((row) => row.outcome === ClientDecisionOutcome.APPROVED)?._count._all ?? 0;
+    const rejectedCount =
+      decisionOutcomeCounts.find((row) => row.outcome === ClientDecisionOutcome.REJECTED)?._count._all ?? 0;
+    const approvalRate = decisionTotal > 0 ? Math.round((approvedCount / decisionTotal) * 1000) / 10 : 0;
+
+    let latencyHoursTotal = 0;
+    let latencyCount = 0;
+    for (const decision of recentDecisionsForLatency) {
+      const openedAt = decision.milestone.clientDecisionOpenedAt;
+      if (!openedAt) continue;
+      const hours = (decision.createdAt.getTime() - openedAt.getTime()) / (1000 * 60 * 60);
+      if (!Number.isFinite(hours) || hours < 0) continue;
+      latencyHoursTotal += hours;
+      latencyCount += 1;
+    }
+    const avgDecisionHours = latencyCount > 0 ? Math.round((latencyHoursTotal / latencyCount) * 10) / 10 : 0;
+
+    type BottleneckAggregate = {
+      projectName: string;
+      openRequests: number;
+      oldestOpenHours: number;
+      totalResponseHours: number;
+      responseCount: number;
+      decisionsLast30Days: number;
+    };
+
+    const bottleneckMap = new Map<string, BottleneckAggregate>();
+
+    for (const item of openDecisionMilestones) {
+      const current = bottleneckMap.get(item.projectId) ?? {
+        projectName: item.project.name,
+        openRequests: 0,
+        oldestOpenHours: 0,
+        totalResponseHours: 0,
+        responseCount: 0,
+        decisionsLast30Days: 0,
+      };
+      current.openRequests += 1;
+      if (item.clientDecisionOpenedAt) {
+        const openHours = (now.getTime() - item.clientDecisionOpenedAt.getTime()) / (1000 * 60 * 60);
+        if (Number.isFinite(openHours) && openHours > current.oldestOpenHours) {
+          current.oldestOpenHours = openHours;
+        }
+      }
+      bottleneckMap.set(item.projectId, current);
+    }
+
+    for (const item of decisionsForProjectBottlenecks) {
+      const current = bottleneckMap.get(item.projectId) ?? {
+        projectName: item.milestone.project.name,
+        openRequests: 0,
+        oldestOpenHours: 0,
+        totalResponseHours: 0,
+        responseCount: 0,
+        decisionsLast30Days: 0,
+      };
+      current.decisionsLast30Days += 1;
+      const openedAt = item.milestone.clientDecisionOpenedAt;
+      if (openedAt) {
+        const responseHours = (item.createdAt.getTime() - openedAt.getTime()) / (1000 * 60 * 60);
+        if (Number.isFinite(responseHours) && responseHours >= 0) {
+          current.totalResponseHours += responseHours;
+          current.responseCount += 1;
+        }
+      }
+      bottleneckMap.set(item.projectId, current);
+    }
+
+    const bottlenecksByProject = Array.from(bottleneckMap.entries())
+      .map(([projectId, item]) => ({
+        projectId,
+        projectName: item.projectName,
+        openRequests: item.openRequests,
+        oldestOpenHours: Math.round(item.oldestOpenHours * 10) / 10,
+        avgResponseHours:
+          item.responseCount > 0
+            ? Math.round((item.totalResponseHours / item.responseCount) * 10) / 10
+            : 0,
+        decisionsLast30Days: item.decisionsLast30Days,
+      }))
+      .sort((a, b) => {
+        if (b.openRequests !== a.openRequests) return b.openRequests - a.openRequests;
+        if (b.oldestOpenHours !== a.oldestOpenHours) return b.oldestOpenHours - a.oldestOpenHours;
+        return b.avgResponseHours - a.avgResponseHours;
+      })
+      .slice(0, 5);
+
     return NextResponse.json({
       data: {
         revenueByMonth,
@@ -289,6 +444,15 @@ export async function GET() {
           totalPending: Math.round(totalPendingAgg._sum.totalAmount ?? 0),
           totalOverdue: Math.round(totalOverdueAgg._sum.totalAmount ?? 0),
           projectedNextMonth,
+        },
+        decisionInsights: {
+          totalDecisionsLast30Days: decisionTotal,
+          approvedLast30Days: approvedCount,
+          rejectedLast30Days: rejectedCount,
+          approvalRate,
+          openDecisionRequests: pendingDecisionCount,
+          avgResponseHours: avgDecisionHours,
+          bottlenecksByProject,
         },
         recentActivity,
       },

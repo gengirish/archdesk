@@ -134,7 +134,7 @@ async function main() {
       data: {
         firmId: firm.id,
         name: "Rajesh Kulkarni",
-        phone: "9845012345",
+        phone: "7416642072",
         email: "rajesh.kulkarni@gmail.com",
         address: "Plot 12, Gokul Road",
         city: "Hubbali",
@@ -145,7 +145,7 @@ async function main() {
       data: {
         firmId: firm.id,
         name: "Lakshmi Hegde",
-        phone: "9900298765",
+        phone: "7416642072",
         email: "lakshmi.hegde@yahoo.in",
         address: "Near BVB College, Vidyanagar",
         city: "Hubbali",
@@ -156,7 +156,7 @@ async function main() {
       data: {
         firmId: firm.id,
         name: "Vikram Patil",
-        phone: "9741234567",
+        phone: "7416642072",
         email: "vikram.patil@outlook.com",
         address: "Unkal Lake Road",
         city: "Hubbali",
@@ -167,7 +167,7 @@ async function main() {
       data: {
         firmId: firm.id,
         name: "Dr. Ananya Bhat",
-        phone: "9988776655",
+        phone: "7416642072",
         email: "ananya.bhat@gmail.com",
         address: "Keshwapur Main Road",
         city: "Hubbali",
@@ -178,7 +178,7 @@ async function main() {
       data: {
         firmId: firm.id,
         name: "Siddharth Nadiger",
-        phone: "9880123456",
+        phone: "7416642072",
         address: "Sadhankeri, Dharwad",
         city: "Dharwad",
         notes: "Weekend meetings only. Retail showroom chain.",
@@ -188,7 +188,7 @@ async function main() {
       data: {
         firmId: firm.id,
         name: "Meera Joshi",
-        phone: "9845098765",
+        phone: "7416642072",
         email: "meera.joshi@gmail.com",
         address: "B-403, Shree Residency, Navanagar",
         city: "Hubbali",
@@ -198,7 +198,7 @@ async function main() {
       data: {
         firmId: firm.id,
         name: "Naveen Hosamani",
-        phone: "9743567890",
+        phone: "7416642072",
         email: "naveen.h@gmail.com",
         address: "CBT Layout, Vidyanagar",
         city: "Hubbali",
@@ -209,7 +209,7 @@ async function main() {
       data: {
         firmId: firm.id,
         name: "Savita Desai",
-        phone: "9886012345",
+        phone: "7416642072",
         email: "savita.desai@rediffmail.com",
         address: "KHB Colony, Navanagar",
         city: "Hubbali",

@@ -1,4 +1,4 @@
-import { useQueries } from "@tanstack/react-query";
+import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
 import { useProjects } from "./useProjects";
 
 type ApiEnvelope<T> = { data: T | null; error: string | null };
@@ -20,6 +20,7 @@ export type MilestoneListItem = {
   paidAt: string | null;
   paidAmount: number | null;
   dueDate: string | null;
+  clientDecisionOpen: boolean;
   projectId: string;
   projectName: string;
   invoices: { id: string; invoiceNo: string; totalAmount: number; status: string }[];
@@ -45,4 +46,80 @@ export function useAllMilestones() {
   const milestones = milestoneQueries.flatMap((q) => q.data ?? []);
 
   return { milestones, isLoading };
+}
+
+export function useToggleMilestoneClientReview() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      projectId,
+      milestoneId,
+      open,
+    }: {
+      projectId: string;
+      milestoneId: string;
+      open: boolean;
+    }) => {
+      const response = await fetch(
+        `/api/projects/${projectId}/milestones/${milestoneId}/client-review`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ open }),
+        }
+      );
+      const json = (await response.json()) as ApiEnvelope<{ id: string }>;
+      if (!response.ok || json.error) {
+        throw new Error(json.error ?? "Unable to update client review state");
+      }
+      return json.data;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["milestones", "project", variables.projectId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["portal", "project", variables.projectId],
+      });
+    },
+  });
+}
+
+export function useSendClientDecisionNudge() {
+  return useMutation({
+    mutationFn: async ({
+      projectId,
+      milestoneId,
+      channel,
+      message,
+    }: {
+      projectId: string;
+      milestoneId: string;
+      channel: "email" | "whatsapp";
+      message?: string;
+    }) => {
+      const response = await fetch(
+        `/api/projects/${projectId}/milestones/${milestoneId}/client-nudge`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ channel, message }),
+        }
+      );
+      const json = (await response.json()) as ApiEnvelope<{
+        queued: boolean;
+        channel: string;
+        queuedAt: string;
+      }>;
+      if (!response.ok || json.error) {
+        throw new Error(json.error ?? "Unable to queue client nudge");
+      }
+      return json.data;
+    },
+  });
 }

@@ -34,6 +34,8 @@ The central command centre for the firm. Shows real-time metrics at a glance.
 - Revenue summary with trend indicator
 - Project stage distribution breakdown (Concept through Completed)
 - **Analytics** (`/analytics`, Enterprise): cash-flow KPIs, 12-month revenue vs invoiced, projects by stage/type, lead conversion, top clients, recent activity (uses `GET /api/dashboard/analytics` via TanStack Query)
+- **Decision analytics** (`/analytics`, Enterprise): client decision KPIs (last 30 days volume, approval rate, open requests, average response hours)
+- **Decision bottlenecks table** (`/analytics`, Enterprise): top projects ranked by open decision load and response delays, with direct deep links into Billing for action
 
 **API:** `GET /api/dashboard/stats` (summary KPIs), `GET /api/dashboard/analytics` (12-month revenue vs invoiced, stage/type breakdowns, lead conversion, top clients, cash flow, unified activity feed).
 
@@ -141,6 +143,9 @@ Architecture fees are milestone-based, tied to project stages:
 - Collection rate progress bar
 - Full milestone table with: name, project, base amount, GST-inclusive amount, and payment status
 - Milestone statuses: Upcoming, Due, Unpaid, Paid, Overdue
+- Enterprise control to open/close client decision requests per milestone (powers client portal approve/reject inbox)
+- URL filter support for decision triage workflows (for example, `/billing?projectId=...&decision=open`)
+- Includes a one-click **Nudge client** action for open decision requests (Resend email delivery + WhatsApp provider abstraction with audit log)
 
 **GST compliance:**
 - Default 18% GST on architecture services
@@ -293,6 +298,8 @@ Magic-link access for clients to view their project. No app download, no account
 
 **What clients see:**
 - Project name, stage, and timeline with current stage highlighted
+- Decision requests for milestones with approve/reject actions and mandatory notes
+- Recent decision history for transparency
 - Milestone payment table with status (Paid/Upcoming/Overdue) and Razorpay payment links
 - Approved drawings (only approved — no draft confusion)
 - Recent site update photos and notes
@@ -304,7 +311,7 @@ Magic-link access for clients to view their project. No app download, no account
 - Light theme (client-facing), not the dark dashboard
 - Middleware exempts `/portal/*` from auth
 
-**API:** `GET /api/portal/[token]` (public)
+**API:** `GET /api/portal/[token]`, `GET /api/portal/[token]/decisions`, `POST /api/portal/[token]/decisions` (public), and staff control endpoint `PATCH /api/projects/[id]/milestones/[milestoneId]/client-review`
 
 ---
 
@@ -367,7 +374,7 @@ Every database query is scoped to `firmId`. A firm's data is completely isolated
 Each project has a unique `clientToken` (auto-generated cuid). Clients access their project via `/portal/[token]` without needing a Clerk account. They can view the project timeline, milestone payments, approved drawings, and site update photos. The portal uses a light theme with the firm's brand colour.
 
 ### API Design
-- 16 RESTful endpoints under `/api/[resource]`
+- RESTful endpoints under `/api/[resource]` with project-scoped nested routes
 - Typed responses using `{ data, error }` pattern
 - Clerk session validated on every authenticated request
 - Firm ownership checked before any read/write
