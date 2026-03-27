@@ -33,6 +33,9 @@ ArchDesk is a vertical SaaS platform purpose-built for architecture and interior
 # Install dependencies
 npm install
 
+# Use Node 20 (see .nvmrc)
+nvm use
+
 # Set up environment variables
 cp .env.example .env.local
 
@@ -75,9 +78,23 @@ e2e/               # Playwright E2E tests
 |---------|-------------|
 | `npm run dev` | Start development server |
 | `npm run build` | Production build |
+| `npm run lint` | Run Next.js lint checks |
+| `npm run typecheck` | Run TypeScript compile checks (`--noEmit`) |
+| `npm run db:generate` | Generate Prisma client |
 | `npm run db:push` | Push Prisma schema to database |
 | `npm run db:studio` | Open Prisma Studio |
 | `npm run test:e2e` | Run Playwright E2E tests |
+| `npm run test:e2e:public` | Run public/unauthenticated Playwright suites |
+
+## CI
+
+GitHub Actions runs on every push and pull request to `master`:
+
+- `npm run db:generate`
+- `npm run typecheck`
+- `npm run lint`
+- `npm run build`
+- `npm run test:e2e:public` (Chromium smoke suite)
 
 ## Deployment
 

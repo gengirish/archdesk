@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Suspense } from "react";
-import { IndianRupee, FileText, Clock, CheckCircle, AlertCircle } from "lucide-react";
+import { IndianRupee, FileText, Clock, CheckCircle, AlertCircle, Bot } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -13,6 +13,7 @@ import { hasAccess } from "@/lib/feature-tiers";
 import { usePlan } from "@/hooks/usePlan";
 import {
   useAllMilestones,
+  useRunDecisionSlaAutomation,
   useSendClientDecisionNudge,
   useToggleMilestoneClientReview,
 } from "@/hooks/useBilling";
@@ -32,8 +33,11 @@ function BillingPageContent() {
   const canUseClientPortalDecisions = hasAccess(plan, "client_portal");
   const toggleDecisionCollection = useToggleMilestoneClientReview();
   const sendClientNudge = useSendClientDecisionNudge();
+  const runDecisionSla = useRunDecisionSlaAutomation();
   const [nudgedMilestones, setNudgedMilestones] = useState<Record<string, true>>({});
   const [nudgeError, setNudgeError] = useState<string | null>(null);
+  const [slaInfo, setSlaInfo] = useState<string | null>(null);
+  const [slaError, setSlaError] = useState<string | null>(null);
 
   const projectIdFilter = searchParams.get("projectId")?.trim() || "";
   const decisionFilter = searchParams.get("decision")?.trim() || "";
@@ -65,6 +69,61 @@ function BillingPageContent() {
         <p className="mt-1 text-sm text-muted-foreground">
           Milestone-based billing across all projects
         </p>
+        {canUseClientPortalDecisions && (
+          <div className="mt-2 flex items-center gap-2">
+            <button
+              type="button"
+              className="rounded border border-border px-2 py-1 text-[11px] font-medium hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={runDecisionSla.isPending}
+              onClick={() => {
+                setSlaError(null);
+                setSlaInfo(null);
+                runDecisionSla.mutate(
+                  { send: false, channel: "email" },
+                  {
+                    onSuccess: (result) => {
+                      setSlaInfo(
+                        `SLA scan: ${result.scanned} open, ${result.atRisk} at risk, ${result.breached} breached.`,
+                      );
+                    },
+                    onError: (error) => {
+                      setSlaError(error instanceof Error ? error.message : "Unable to run SLA scan.");
+                    },
+                  },
+                );
+              }}
+            >
+              <span className="inline-flex items-center gap-1">
+                <Bot className="h-3 w-3" />
+                Run SLA scan
+              </span>
+            </button>
+            <button
+              type="button"
+              className="rounded border border-border px-2 py-1 text-[11px] font-medium hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={runDecisionSla.isPending}
+              onClick={() => {
+                setSlaError(null);
+                setSlaInfo(null);
+                runDecisionSla.mutate(
+                  { send: true, channel: "email" },
+                  {
+                    onSuccess: (result) => {
+                      setSlaInfo(
+                        `Auto-nudge run complete: ${result.nudged} nudged, ${result.failed} failed, ${result.breached} breached.`,
+                      );
+                    },
+                    onError: (error) => {
+                      setSlaError(error instanceof Error ? error.message : "Unable to auto-nudge breached requests.");
+                    },
+                  },
+                );
+              }}
+            >
+              Auto-nudge breached
+            </button>
+          </div>
+        )}
         {(projectIdFilter || decisionFilter) && (
           <div className="mt-2 flex items-center gap-2 text-xs">
             <span className="rounded-full bg-primary/10 px-2 py-1 text-primary">
@@ -83,6 +142,8 @@ function BillingPageContent() {
         {nudgeError && (
           <p className="mt-2 text-xs text-destructive">{nudgeError}</p>
         )}
+        {slaInfo && <p className="mt-2 text-xs text-muted-foreground">{slaInfo}</p>}
+        {slaError && <p className="mt-2 text-xs text-destructive">{slaError}</p>}
       </div>
 
       {/* Summary cards */}

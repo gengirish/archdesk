@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { ActivityType, ClientDecisionOutcome, InvoiceStatus, LeadStage, MilestoneStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { classifyDecisionSla } from "@/lib/decision-sla";
 import { calculateGST } from "@/lib/utils";
 
 function monthKey(d: Date): string {
@@ -427,6 +428,14 @@ export async function GET() {
       })
       .slice(0, 5);
 
+    const slaHealth = { healthy: 0, atRisk: 0, breached: 0 };
+    for (const milestone of openDecisionMilestones) {
+      const { state } = classifyDecisionSla(milestone.clientDecisionOpenedAt, now, 48);
+      if (state === "BREACHED") slaHealth.breached += 1;
+      else if (state === "AT_RISK") slaHealth.atRisk += 1;
+      else slaHealth.healthy += 1;
+    }
+
     return NextResponse.json({
       data: {
         revenueByMonth,
@@ -452,6 +461,7 @@ export async function GET() {
           approvalRate,
           openDecisionRequests: pendingDecisionCount,
           avgResponseHours: avgDecisionHours,
+          slaHealth,
           bottlenecksByProject,
         },
         recentActivity,

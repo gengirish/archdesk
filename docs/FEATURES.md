@@ -35,6 +35,7 @@ The central command centre for the firm. Shows real-time metrics at a glance.
 - Project stage distribution breakdown (Concept through Completed)
 - **Analytics** (`/analytics`, Enterprise): cash-flow KPIs, 12-month revenue vs invoiced, projects by stage/type, lead conversion, top clients, recent activity (uses `GET /api/dashboard/analytics` via TanStack Query)
 - **Decision analytics** (`/analytics`, Enterprise): client decision KPIs (last 30 days volume, approval rate, open requests, average response hours)
+- **Decision SLA health** (`/analytics`, Enterprise): open decision SLA distribution (healthy, at-risk, breached) for proactive follow-up
 - **Decision bottlenecks table** (`/analytics`, Enterprise): top projects ranked by open decision load and response delays, with direct deep links into Billing for action
 
 **API:** `GET /api/dashboard/stats` (summary KPIs), `GET /api/dashboard/analytics` (12-month revenue vs invoiced, stage/type breakdowns, lead conversion, top clients, cash flow, unified activity feed).
@@ -146,6 +147,7 @@ Architecture fees are milestone-based, tied to project stages:
 - Enterprise control to open/close client decision requests per milestone (powers client portal approve/reject inbox)
 - URL filter support for decision triage workflows (for example, `/billing?projectId=...&decision=open`)
 - Includes a one-click **Nudge client** action for open decision requests (Resend email delivery + WhatsApp provider abstraction with audit log)
+- Includes **Decision SLA automation controls** (run scan + auto-nudge breached requests with cooldown) for Owner/Admin on Enterprise
 
 **GST compliance:**
 - Default 18% GST on architecture services
@@ -311,7 +313,7 @@ Magic-link access for clients to view their project. No app download, no account
 - Light theme (client-facing), not the dark dashboard
 - Middleware exempts `/portal/*` from auth
 
-**API:** `GET /api/portal/[token]`, `GET /api/portal/[token]/decisions`, `POST /api/portal/[token]/decisions` (public), and staff control endpoint `PATCH /api/projects/[id]/milestones/[milestoneId]/client-review`
+**API:** `GET /api/portal/[token]`, `GET /api/portal/[token]/decisions`, `POST /api/portal/[token]/decisions` (public), staff control endpoint `PATCH /api/projects/[id]/milestones/[milestoneId]/client-review`, nudge endpoint `POST /api/projects/[id]/milestones/[milestoneId]/client-nudge`, and automation endpoint `POST /api/automation/decision-sla`
 
 ---
 
@@ -387,7 +389,7 @@ Each project has a unique `clientToken` (auto-generated cuid). Clients access th
 | Framework | Next.js 14 (App Router, TypeScript strict) |
 | UI | Tailwind CSS + shadcn/ui |
 | Auth | Clerk |
-| Database | Prisma ORM + Neon PostgreSQL |
+| Database | Prisma ORM + Supabase Postgres |
 | File Storage | Supabase Storage |
 | Client State | Zustand |
 | Server State | TanStack React Query |
@@ -402,16 +404,18 @@ Each project has a unique `clientToken` (auto-generated cuid). Clients access th
 
 ## E2E Test Coverage
 
-26 Playwright tests covering four areas:
+42 Playwright tests covering five areas:
 
 | Suite | Tests | What's verified |
 |-------|-------|-----------------|
 | Landing Page | 8 | Nav, hero, features, Indian market section, footer, navigation |
 | Authentication | 5 | Clerk sign-in/sign-up forms render, unauthenticated redirect |
-| API Routes | 4 | All endpoints reject unauthenticated requests |
-| Dashboard | 9 | Sign-in via API token, sidebar nav, search, user avatar, page navigation |
+| API Routes | 8 | Public portal behavior (404/rate-limit) + protected endpoint rejection checks including decision SLA automation |
+| Dashboard | 8 | Sign-in via API token, sidebar nav, search, user avatar, page navigation |
+| Feature Workflows | 11 | Billing and analytics routes render expected enterprise decision controls/insights |
 
 **Run locally:** `npm run test:e2e`
+**Run public suites only:** `npm run test:e2e:public`
 **Run against production:** `BASE_URL=https://archdesk.vercel.app npm run test:e2e`
 
 Authenticated tests use Clerk Backend API sign-in tokens to bypass 2FA.

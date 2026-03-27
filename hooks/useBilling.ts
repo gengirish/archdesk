@@ -123,3 +123,54 @@ export function useSendClientDecisionNudge() {
     },
   });
 }
+
+export function useRunDecisionSlaAutomation() {
+  return useMutation({
+    mutationFn: async ({
+      send,
+      channel,
+      breachHours,
+      nudgeCooldownHours,
+      limit,
+      message,
+    }: {
+      send: boolean;
+      channel?: "email" | "whatsapp";
+      breachHours?: number;
+      nudgeCooldownHours?: number;
+      limit?: number;
+      message?: string;
+    }) => {
+      const response = await fetch("/api/automation/decision-sla", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          send,
+          channel: channel ?? "email",
+          breachHours: breachHours ?? 48,
+          nudgeCooldownHours: nudgeCooldownHours ?? 24,
+          limit: limit ?? 25,
+          message,
+        }),
+      });
+      const json = (await response.json()) as ApiEnvelope<{
+        mode: "dry-run" | "execute";
+        scanned: number;
+        healthy: number;
+        atRisk: number;
+        breached: number;
+        nudged: number;
+        failed: number;
+      }>;
+      if (!response.ok || json.error) {
+        throw new Error(json.error ?? "Unable to run decision SLA automation");
+      }
+      if (!json.data) {
+        throw new Error("Decision SLA automation returned no data");
+      }
+      return json.data;
+    },
+  });
+}

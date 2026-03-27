@@ -342,8 +342,10 @@ All 5 roles have real Clerk accounts for persona-based demos:
 **Show:**
 - 20 milestones with GST breakup, payment status colour coding
 - OVERDUE flag on Patil Farmhouse Phase 1
+- Client Decision column with Open/Close toggles and "Nudge client" action
+- SLA automation controls: "Run SLA scan" and "Auto-nudge breached" buttons
 
-**Say:** "Billing is tied to project stages — when schematic design is done, the fee becomes due. GST at 18% is auto-calculated. Amounts in Indian format: ₹1,00,000."
+**Say:** "Billing is tied to project stages — when schematic design is done, the fee becomes due. GST at 18% is auto-calculated. Amounts in Indian format: ₹1,00,000. Open a decision request and the client sees it instantly in their portal. If they don't respond within 48 hours, auto-nudge catches it."
 
 ---
 
@@ -446,15 +448,18 @@ One desk for everything:
 | Projects | Built (API CRUD complete) |
 | Clients | Built (API CRUD complete) |
 | Drawings | Built (API CRUD, versions, comments) |
-| Billing | Built (API + GST PDF invoice generation) |
+| Billing | Built (API + GST PDF + decision SLA automation) |
 | Leads CRM | Built (API CRUD + one-click conversion) |
 | Site Tracker | Built (API CRUD, issues, photos) |
 | Vendors | Built (API CRUD complete) |
 | Settings | Built (API GET/PATCH) |
 | AI Cost Estimator | Built (interactive, Indian rates, **PDF download**) |
-| Client Portal | Built (magic-link, project timeline) |
+| Client Portal | Built (magic-link, project timeline, decision inbox) |
+| Analytics | Built (cash flow, decisions, SLA health, bottlenecks) |
 | SaaS Plan Tiers | Built (Free/Pro/Enterprise, stored in Firm model) |
-| API routes | 16 endpoints |
-| Database | 15 Prisma models + comprehensive seed |
+| CI/CD | GitHub Actions (typecheck, lint, build, E2E smoke) |
+| API routes | 20+ endpoints |
+| Database | 17 Prisma models + comprehensive seed |
+| E2E tests | **42 Playwright tests** (22 public + 20 authenticated) |
 | Demo data | **5 roles, 10 projects, 20 milestones, 12 drawings, 12 leads, 8 vendors, 6 issues** |
 | Demo plan | **Enterprise** — all features unlocked for demos |

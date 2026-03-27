@@ -1,5 +1,30 @@
 # ArchDesk — Changelog
 
+## 2026-03-27 — Decision SLA automation, CI hardening & analytics
+
+### Decision SLA automation
+- Added enterprise Decision SLA automation endpoint `POST /api/automation/decision-sla` with dry-run and execute modes, configurable breach thresholds (default 48h), and nudge cooldown controls (default 24h)
+- Added `lib/decision-sla.ts` helpers: `classifyDecisionSla()` (HEALTHY / AT_RISK / BREACHED), `isNudgeCooldownComplete()`, `hoursSince()`
+- Added Billing UI controls: "Run SLA scan" (dry run) and "Auto-nudge breached" buttons for Owner/Admin on Enterprise plan
+- Extended analytics API with `slaHealth` counts (`healthy`, `atRisk`, `breached`) for currently open decision requests
+- Added SLA health distribution card in Analytics under Client Decision Insights
+
+### CI & release hardening
+- Added GitHub Actions workflow `.github/workflows/ci.yml` with two jobs: `verify` (install, Prisma generate, typecheck, lint, build) and `e2e_public` (Chromium smoke tests)
+- Added non-interactive ESLint config `.eslintrc.json` (`next/core-web-vitals`)
+- Added dedicated public Playwright config `playwright.public.config.ts` (no Clerk setup dependency)
+- Added release guardrail scripts: `typecheck`, `test:e2e:public`
+- Added Node runtime parity: `engines` constraint in `package.json` and `.nvmrc` pinned to 20
+
+### E2E test coverage
+- 42 Playwright tests: 22 public (landing, auth, API) + 20 authenticated (dashboard, features)
+- Fixed rate-limit test to be resilient to serverless cold starts (accepts 404 or 429)
+- Added unauthenticated protection test for `POST /api/automation/decision-sla`
+- Added `E2E_CLERK_USER_EMAIL` / `E2E_CLERK_USER_PASSWORD` to `.env.example`
+- All 42 tests passing against https://archdesk.vercel.app
+
+---
+
 ## 2026-03-26 — Client decision portal (phase 1)
 
 - Added `ClientDecision` model and `ClientDecisionOutcome` enum to Prisma schema, plus `Milestone.clientDecisionOpen` toggle and related indexes

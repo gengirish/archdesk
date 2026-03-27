@@ -28,6 +28,11 @@ export type AnalyticsData = {
     approvalRate: number;
     openDecisionRequests: number;
     avgResponseHours: number;
+    slaHealth: {
+      healthy: number;
+      atRisk: number;
+      breached: number;
+    };
     bottlenecksByProject: {
       projectId: string;
       projectName: string;

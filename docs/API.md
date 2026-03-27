@@ -372,6 +372,34 @@ Email channel uses Resend. WhatsApp is routed through a provider abstraction (cu
 
 ---
 
+## Automation
+
+### `POST /api/automation/decision-sla`
+
+**Auth:** Required
+
+**Purpose:** Run decision SLA automation for open client decision requests (scan only or auto-nudge breached items).
+Enterprise-only and restricted to `OWNER`/`ADMIN`.
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `send` | boolean | No | `false` = dry run scan (default), `true` = execute auto-nudges |
+| `channel` | `"email"` \| `"whatsapp"` | No | Defaults to `"email"` |
+| `limit` | number | No | Max open milestones to scan (1-100, default 25) |
+| `breachHours` | number | No | SLA breach threshold in hours (4-168, default 48) |
+| `nudgeCooldownHours` | number | No | Minimum hours between nudges per milestone (1-168, default 24) |
+| `message` | string | No | Optional custom reminder message, max 500 chars |
+
+**Response:** `{ data: { mode, scanned, healthy, atRisk, breached, nudged, failed, items[] }, error: null }`
+
+`items[]` includes `projectId`, `projectName`, `milestoneId`, `milestoneName`, `slaState`, `ageHours`, `lastNudgedAt`, and `canAutoNudge`.
+
+**Status codes:** 200, 400, 401, 403, 404, 500
+
+---
+
 ## Project: Site updates
 
 ### `GET /api/projects/[id]/site-updates`
@@ -476,7 +504,7 @@ Only these keys are applied (others ignored). At least one must be present or **
 | `leadConversion` | `total`, `won`, `lost`, `rate` (% won ÷ total leads) |
 | `topClients` | Top 5 by summed project `budget` |
 | `cashFlow` | `totalReceived`, `totalPending`, `totalOverdue`, `projectedNextMonth` |
-| `decisionInsights` | 30-day client decision KPIs: `totalDecisionsLast30Days`, `approvedLast30Days`, `rejectedLast30Days`, `approvalRate`, `openDecisionRequests`, `avgResponseHours`, `bottlenecksByProject` (top 5 by open/delay risk, each with `projectId`, `projectName`, `openRequests`, `oldestOpenHours`, `avgResponseHours`, `decisionsLast30Days`) |
+| `decisionInsights` | 30-day client decision KPIs: `totalDecisionsLast30Days`, `approvedLast30Days`, `rejectedLast30Days`, `approvalRate`, `openDecisionRequests`, `avgResponseHours`, `slaHealth` (`healthy`, `atRisk`, `breached` counts across currently open decision requests), `bottlenecksByProject` (top 5 by open/delay risk, each with `projectId`, `projectName`, `openRequests`, `oldestOpenHours`, `avgResponseHours`, `decisionsLast30Days`) |
 | `recentActivity` | Up to 10 mixed items (`site_update`, `lead_activity`, `invoice_payment`) with ISO `date` |
 
 **Status codes:** 200, 401, 404, 500

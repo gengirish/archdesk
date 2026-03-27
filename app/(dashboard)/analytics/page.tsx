@@ -419,6 +419,34 @@ export default function AnalyticsPage() {
                     <span>Rejected: {data.decisionInsights.rejectedLast30Days}</span>
                   </div>
                 </div>
+                <div className="rounded-lg border border-border/60 bg-secondary/20 px-3 py-3">
+                  <div className="mb-2 flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">SLA health (open decisions)</span>
+                    <span className="tabular-nums text-muted-foreground">
+                      {data.decisionInsights.openDecisionRequests}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-[11px]">
+                    <div className="rounded border border-border/60 px-2 py-1.5">
+                      <div className="text-muted-foreground">Healthy</div>
+                      <div className="font-semibold tabular-nums text-green-400">
+                        {data.decisionInsights.slaHealth.healthy}
+                      </div>
+                    </div>
+                    <div className="rounded border border-border/60 px-2 py-1.5">
+                      <div className="text-muted-foreground">At risk</div>
+                      <div className="font-semibold tabular-nums text-yellow-400">
+                        {data.decisionInsights.slaHealth.atRisk}
+                      </div>
+                    </div>
+                    <div className="rounded border border-border/60 px-2 py-1.5">
+                      <div className="text-muted-foreground">Breached</div>
+                      <div className="font-semibold tabular-nums text-destructive">
+                        {data.decisionInsights.slaHealth.breached}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
