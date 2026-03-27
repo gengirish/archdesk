@@ -84,6 +84,24 @@ test.describe("Feature pages (authenticated)", () => {
     await expect(gate.or(heading)).toBeVisible({ timeout: 15_000 });
   });
 
+  test("drawings upload dialog shows file input when drawings feature is unlocked", async ({
+    page,
+  }) => {
+    await page.getByRole("link", { name: "Drawings" }).click();
+    await expect(page).toHaveURL(/\/drawings/, { timeout: 10_000 });
+
+    const gate = page.getByText(/upgrade to unlock/i);
+    await expect(gate.or(page.getByRole("heading", { name: /drawings/i }))).toBeVisible({
+      timeout: 15_000,
+    });
+    if (await gate.isVisible()) {
+      return;
+    }
+
+    await page.getByRole("button", { name: /upload drawing/i }).click();
+    await expect(page.locator("#drawing-file[type=file]")).toBeVisible({ timeout: 10_000 });
+  });
+
   test("analytics page shows gate or decision insights", async ({ page }) => {
     await page.getByRole("link", { name: "Analytics" }).click();
     await expect(page).toHaveURL(/\/analytics/, { timeout: 10_000 });
@@ -93,11 +111,20 @@ test.describe("Feature pages (authenticated)", () => {
     await expect(gate.or(insights)).toBeVisible({ timeout: 15_000 });
   });
 
+  test("3D Studio page loads generation controls", async ({ page }) => {
+    await page.getByRole("link", { name: "3D Studio" }).click();
+    await expect(page).toHaveURL(/\/3d-studio/, { timeout: 10_000 });
+    await expect(page.getByRole("heading", { name: /3d studio/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /sample plan/i })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("button", { name: /generate 3d/i })).toBeVisible();
+  });
+
   test("navigation through all main pages works", async ({ page }) => {
     const pages = [
       { name: "Projects", url: /\/projects/ },
       { name: "Clients", url: /\/clients/ },
       { name: "Billing", url: /\/billing/ },
+      { name: "3D Studio", url: /\/3d-studio/ },
       { name: "Dashboard", url: /\/dashboard/ },
     ];
 

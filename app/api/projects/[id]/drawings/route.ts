@@ -42,6 +42,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const LOG_TAG = "[API_PROJECT_DRAWINGS_POST]";
   try {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ data: null, error: "Unauthorized" }, { status: 401 });
@@ -55,24 +56,35 @@ export async function POST(
       return NextResponse.json({ data: null, error: "Project not found" }, { status: 404 });
     }
 
-    const body = await request.json();
-    const { name, type, fileUrl, fileSize, mimeType } = body;
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ data: null, error: "Invalid JSON body" }, { status: 400 });
+    }
+    if (body === null || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ data: null, error: "Invalid JSON body" }, { status: 400 });
+    }
+    const { name, type, fileUrl, fileSize, mimeType } = body as Record<string, unknown>;
 
-    if (!name || !type || !fileUrl) {
+    if (typeof name !== "string" || !name.trim()) {
       return NextResponse.json({ data: null, error: "Name, type, and fileUrl are required" }, { status: 400 });
     }
-    if (!DRAWING_TYPES.has(type)) {
+    if (typeof type !== "string" || !DRAWING_TYPES.has(type as DrawingType)) {
       return NextResponse.json({ data: null, error: "Invalid drawing type" }, { status: 400 });
+    }
+    if (typeof fileUrl !== "string" || !fileUrl.trim()) {
+      return NextResponse.json({ data: null, error: "Name, type, and fileUrl are required" }, { status: 400 });
     }
 
     const drawing = await db.drawing.create({
       data: {
         projectId: params.id,
-        name,
-        type,
-        fileUrl,
-        fileSize,
-        mimeType,
+        name: name.trim(),
+        type: type as DrawingType,
+        fileUrl: fileUrl.trim(),
+        fileSize: typeof fileSize === "number" && Number.isFinite(fileSize) ? fileSize : undefined,
+        mimeType: typeof mimeType === "string" ? mimeType : undefined,
         uploadedById: user.id,
       },
       include: {
@@ -83,7 +95,7 @@ export async function POST(
 
     return NextResponse.json({ data: drawing, error: null }, { status: 201 });
   } catch (error) {
-    console.error("[API_PROJECT_DRAWINGS_POST]", error);
+    console.error(LOG_TAG, error);
     return NextResponse.json({ data: null, error: "Internal server error" }, { status: 500 });
   }
 }

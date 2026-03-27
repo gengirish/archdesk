@@ -8,6 +8,7 @@ export const SIDEBAR_ITEMS = [
   "Leads",
   "Vendors",
   "AI Estimator",
+  "3D Studio",
   "Analytics",
 ];
 

@@ -55,6 +55,37 @@ test.describe("API Routes (unauthenticated)", () => {
     expect([401, 403, 404]).toContain(response.status());
   });
 
+  test("GET /api/projects/fake-id/floor-plans rejects without auth", async ({ request }) => {
+    const response = await request.get("/api/projects/fake-id/floor-plans", {
+      headers: jsonHeaders,
+    });
+    expect([401, 403, 404]).toContain(response.status());
+  });
+
+  test("POST /api/projects/fake-id/flat-scenes/generate rejects without auth", async ({ request }) => {
+    const response = await request.post("/api/projects/fake-id/flat-scenes/generate", {
+      headers: { ...jsonHeaders, "Content-Type": "application/json" },
+      data: { floorPlanId: "fake" },
+    });
+    expect([401, 403, 404]).toContain(response.status());
+  });
+
+  test("POST /api/projects/fake-id/drawings/upload rejects without auth", async ({ request }) => {
+    const response = await request.post("/api/projects/fake-id/drawings/upload", {
+      headers: jsonHeaders,
+      multipart: {
+        file: {
+          name: "smoke.pdf",
+          mimeType: "application/pdf",
+          buffer: Buffer.from("%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n"),
+        },
+        name: "Smoke",
+        type: "PLAN",
+      },
+    });
+    expect([401, 403, 404]).toContain(response.status());
+  });
+
   test("GET /api/portal/fake-token/decisions returns not found", async ({ request }) => {
     const response = await request.get("/api/portal/fake-token/decisions", {
       headers: jsonHeaders,

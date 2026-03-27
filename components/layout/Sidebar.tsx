@@ -18,6 +18,7 @@ import {
   Calculator,
   Sparkles,
   BarChart3,
+  Box,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useProjectStore } from "@/store/useProjectStore";
@@ -42,6 +43,7 @@ const navItems: NavItemDef[] = [
   { label: "Leads", href: "/leads", icon: UserPlus, minPlan: "pro" },
   { label: "Vendors", href: "/vendors", icon: Truck, minPlan: "pro" },
   { label: "AI Estimator", href: "/ai-estimator", icon: Calculator, minPlan: "pro", badge: "AI" },
+  { label: "3D Studio", href: "/3d-studio", icon: Box, minPlan: "enterprise" },
   { label: "Analytics", href: "/analytics", icon: BarChart3, minPlan: "enterprise" },
 ];
 

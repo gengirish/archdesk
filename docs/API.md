@@ -1,3 +1,16 @@
+---
+required_docs:
+  - docs/SCHEMA.md: database models referenced by endpoints
+
+related_docs:
+  - docs/FEATURES.md: feature context for endpoints
+
+sources:
+  - app/api/: all API route handlers
+  - middleware.ts: auth and route protection
+  - prisma/schema.prisma: data models used in responses
+---
+
 # ArchDesk — API Reference
 
 > All endpoints require Clerk authentication unless marked **Public**.
@@ -86,6 +99,81 @@ Firm-scoped; wrong firm → 404.
 **Response:** `{ data: ProjectWithRelations, error: null }`
 
 **Status codes:** 200, 401, 404, 500
+
+---
+
+## Project: 3D Studio
+
+### `GET /api/projects/[id]/floor-plans`
+
+**Auth:** Required  
+**Path:** `id` — project ID (firm-scoped)
+
+**Response:** `{ data: FloorPlan[], error: null }`
+
+Each floor plan item includes `name`, `sourceType`, unit/scaling metadata (`unit`, `scale`, `wallHeight`, `wallThickness`) and canonical `planJson`.
+
+**Status codes:** 200, 401, 404, 500
+
+---
+
+### `POST /api/projects/[id]/floor-plans`
+
+**Auth:** Required  
+**Path:** `id` — project ID (firm-scoped)
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | Floor plan label |
+| `sourceType` | `FloorPlanSourceType` | No | Defaults to `MANUAL` |
+| `unit` | string | No | Defaults to `mm` |
+| `scale` | number | No | Positive; defaults to `1` |
+| `wallHeight` | number | No | Positive; defaults to `3000` |
+| `wallThickness` | number | No | Positive; defaults to `200` |
+| `planJson` | object | No | If omitted, server creates a sample layout |
+
+`planJson` shape:
+- `polygon`: `[{ x: number, y: number }, ...]` (minimum 3 points)
+- `walls`: `[{ start: {x,y}, end: {x,y} }, ...]` (minimum 1 segment)
+
+**Response:** `{ data: FloorPlan, error: null }` (201)
+
+**Status codes:** 201, 400, 401, 404, 500
+
+---
+
+### `GET /api/projects/[id]/flat-scenes`
+
+**Auth:** Required  
+**Path:** `id` — project ID (firm-scoped)
+
+**Response:** `{ data: FlatScene[], error: null }`
+
+Each scene includes `name`, `status`, optional `floorPlanId`, and renderer payload in `sceneJson`.
+
+**Status codes:** 200, 401, 404, 500
+
+---
+
+### `POST /api/projects/[id]/flat-scenes/generate`
+
+**Auth:** Required  
+**Path:** `id` — project ID (firm-scoped)
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `floorPlanId` | string (cuid) | Yes | Existing floor plan in this project |
+| `sceneName` | string | No | Optional scene label |
+
+Creates a rule-based v1 3D payload from `planJson` and stores the generated scene.
+
+**Response:** `{ data: FlatScene, error: null }` (201)
+
+**Status codes:** 201, 400, 401, 404, 500
 
 ---
 
@@ -279,7 +367,9 @@ If `stage` changes, a `LeadActivity` with `type: STAGE_CHANGE` and note `{old} �
 
 ### `POST /api/projects/[id]/drawings`
 
-**Auth:** Required
+**Auth:** Required  
+
+**Note:** For browser uploads from the Drawings page, use **`POST /api/projects/[id]/drawings/upload`** (multipart) so the file is stored in Supabase and the URL is set automatically. This JSON endpoint remains useful when you already have a hosted `fileUrl`.
 
 **Request body:**
 
@@ -294,6 +384,41 @@ If `stage` changes, a `LeadActivity` with `type: STAGE_CHANGE` and note `{old} �
 **Response:** `{ data: DrawingWithVersionsAndComments, error: null }` (201)
 
 **Status codes:** 201, 400, 401, 404, 500
+
+---
+
+### `POST /api/projects/[id]/drawings/upload`
+
+**Auth:** Required  
+**Path:** `id` — project ID (must belong to user’s firm)  
+**Content-Type:** `multipart/form-data` (do not set `Content-Type` manually; let the client build the boundary).
+
+**Multipart fields:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `file` | file | Yes | Drawing binary; validated server-side (allowed extensions: PDF, DWG, DXF, PNG, JPG, JPEG, WEBP; max **50 MiB** per `lib/drawing-upload.ts`) |
+| `name` | string | Yes | Drawing display name |
+| `type` | `DrawingType` | Yes | Must be a valid enum value |
+| `versionNote` | string | No | Stored on initial `DrawingVersion` (v1), trimmed, max 2000 chars |
+
+**Behaviour:** Uploads the file to Supabase Storage bucket **`drawings`** at path `{firmId}/{projectId}/{timestamp}-{sanitizedOriginalName}`, then creates a `Drawing` with `fileUrl` set to the bucket’s **public** URL and an initial `DrawingVersion` (version `1`). If the database write fails after storage succeeds, the uploaded object is removed best-effort.
+
+**Response:** `{ data: DrawingWithVersionsAndComments, error: null }` (201) — same include shape as `POST /api/projects/[id]/drawings`.
+
+**Status codes:**
+
+| Code | When |
+|------|------|
+| 201 | Created |
+| 400 | Missing/invalid `name`, `type`, or `file`; invalid multipart |
+| 401 | Not signed in |
+| 404 | User or project not found |
+| 413 | File over size limit |
+| 415 | Extension/MIME not allowed or inconsistent |
+| 500 | Unhandled / DB error after upload |
+| 502 | Supabase storage upload failed |
+| 503 | `NEXT_PUBLIC_SUPABASE_URL` or `SUPABASE_SERVICE_ROLE_KEY` missing |
 
 ---
 
@@ -679,6 +804,12 @@ POST route is rate-limited per token/IP window and can return 429 with `Retry-Af
 
 ### UserRole
 `OWNER` | `ARCHITECT` | `DRAFTSMAN` | `SITE_MANAGER` | `ADMIN`
+
+### FloorPlanSourceType
+`MANUAL` | `DXF` | `PDF` | `IMAGE`
+
+### FlatSceneStatus
+`DRAFT` | `GENERATED` | `FAILED`
 
 ### IssueSeverity
 `LOW` | `MEDIUM` | `HIGH` | `CRITICAL`

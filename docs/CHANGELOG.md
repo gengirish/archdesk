@@ -1,4 +1,48 @@
+---
+related_docs:
+  - docs/FEATURES.md: feature changes logged here
+  - docs/API.md: API changes logged here
+  - docs/SCHEMA.md: schema changes logged here
+
+sources:
+  - app/: page route changes
+  - app/api/: API route changes
+  - prisma/schema.prisma: schema changes
+  - components/: component changes
+  - lib/: utility changes
+  - e2e/: test coverage changes
+---
+
 # ArchDesk — Changelog
+
+## 2026-03-27 — Drawings upload (docs & E2E)
+
+- Documented `POST /api/projects/[id]/drawings/upload` (multipart fields, storage path, status codes) in `docs/API.md`; aligned `docs/FEATURES.md` and `docs/DEMO.md` with storage-backed upload from the Drawings UI
+- Playwright: unauthenticated guard for drawings multipart upload; authenticated smoke for `#drawing-file` when the drawings feature is unlocked
+
+---
+
+## 2026-03-27 — 3D Studio MVP (floor plan to Babylon preview)
+
+- Added Babylon.js runtime dependencies (`@babylonjs/core`, `@babylonjs/loaders`) and a new dashboard route `/3d-studio`
+- Added Prisma models/enums for 3D workflow: `FloorPlan`, `FlatScene`, `FloorPlanSourceType`, `FlatSceneStatus`, and Project relations (`floorPlans`, `flatScenes`)
+- Added authenticated project-scoped APIs:
+  - `GET/POST /api/projects/[id]/floor-plans`
+  - `GET /api/projects/[id]/flat-scenes`
+  - `POST /api/projects/[id]/flat-scenes/generate`
+- Added generation utility (`lib/flat-scene-generator.ts`) for rule-based v1 scene payload conversion
+- Added client integration:
+  - `hooks/use3dStudio.ts` for floor plans/scenes mutations & queries
+  - `components/three-d/FlatSceneCanvas.tsx` Babylon renderer
+  - `app/(dashboard)/3d-studio/page.tsx` MVP UI controls + preview
+- Updated docs (`docs/API.md`, `docs/SCHEMA.md`, `docs/FEATURES.md`, `docs/DEMO.md`) for new route, APIs, and schema
+- Fixed Playwright public config mismatch by adding a `setup-public` project and dependency chain so Clerk setup runs before `auth.spec.ts` in `test:e2e:public`
+- Added concrete Cursor multi-agent execution plan at `docs/MULTI_AGENT_IMPLEMENTATION.md` with agent topology, branch strategy, ownership boundaries, merge protocol, and ready-to-run prompts
+- Added v1 integration contract docs under `docs/contracts/` (`floor-plan-json`, `flat-scene-json`, `cost-delta-api`, `portal-options-api`) for contract-first parallel delivery
+- Hardened 3D Studio contract enforcement in API/generator flow: `schemaVersion` normalization, geometry validation, and explicit 400/422 responses for invalid floor-plan payloads
+- Expanded E2E baseline for Phase 0 alignment: added authenticated `/3d-studio` smoke test and unauthenticated checks for new 3D Studio APIs
+
+---
 
 ## 2026-03-27 — Decision SLA automation, CI hardening & analytics
 

@@ -1,6 +1,15 @@
+---
+related_docs:
+  - docs/API.md: endpoints that use these models
+  - docs/FEATURES.md: features backed by these models
+
+sources:
+  - prisma/schema.prisma: Prisma schema (single source of truth)
+---
+
 # ArchDesk — Database Schema Reference
 
-> PostgreSQL via Prisma ORM. 17 models, 17 enums.
+> PostgreSQL via Prisma ORM. 19 models, 19 enums.
 > Every query scopes to `firmId` for multi-tenant isolation.
 
 ---
@@ -82,7 +91,7 @@ Staff member linked to Clerk auth via `clerkId`.
 | deadline | DateTime? | Deadline |
 | clientToken | String | Unique cuid for portal access |
 
-**Relations:** team[], drawings[], milestones[], clientDecisions[], clientNudges[], siteUpdates[], issues[]
+**Relations:** team[], drawings[], floorPlans[], flatScenes[], milestones[], clientDecisions[], clientNudges[], siteUpdates[], issues[]
 
 **Enum ProjectType:** `RESIDENTIAL` | `COMMERCIAL` | `INDUSTRIAL` | `INTERIOR` | `LANDSCAPE` | `INSTITUTIONAL`
 
@@ -151,6 +160,50 @@ Staff member linked to Clerk auth via `clerkId`.
 | clientName | String? | Name for client comments |
 | content | String | Comment text |
 | isClient | Boolean | Default: false |
+
+---
+
+### FloorPlan
+
+Canonical 2D floor-plan geometry for 3D conversion.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| id | String | cuid, PK |
+| projectId | String | FK → Project |
+| name | String | Floor plan label |
+| sourceType | FloorPlanSourceType | Default: `MANUAL` |
+| unit | String | Default: `mm` |
+| scale | Float | Default: `1` |
+| wallHeight | Float | Default: `3000` |
+| wallThickness | Float | Default: `200` |
+| planJson | Json | Normalized 2D geometry (polygon + wall segments) |
+| createdAt | DateTime | Default now() |
+| updatedAt | DateTime | Auto-updated |
+
+**Relations:** scenes[]
+
+**Enum FloorPlanSourceType:** `MANUAL` | `DXF` | `PDF` | `IMAGE`
+
+---
+
+### FlatScene
+
+Generated or manually authored 3D scene payload for Babylon.js rendering.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| id | String | cuid, PK |
+| projectId | String | FK → Project |
+| floorPlanId | String? | Optional FK → FloorPlan |
+| name | String | Scene name |
+| status | FlatSceneStatus | Default: `DRAFT` |
+| sceneJson | Json | Render payload consumed by 3D viewer |
+| generationMeta | Json? | Generator metadata (version, timestamps, etc.) |
+| createdAt | DateTime | Default now() |
+| updatedAt | DateTime | Auto-updated |
+
+**Enum FlatSceneStatus:** `DRAFT` | `GENERATED` | `FAILED`
 
 ---
 

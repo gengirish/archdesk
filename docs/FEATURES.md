@@ -1,3 +1,20 @@
+---
+required_docs:
+  - docs/API.md: API endpoint reference
+  - docs/SCHEMA.md: database schema reference
+
+related_docs:
+  - docs/DEMO.md: stakeholder walkthrough
+
+sources:
+  - app/: page routes and layouts
+  - app/api/: API route handlers
+  - components/: UI and layout components
+  - lib/: utility modules and integrations
+  - middleware.ts: route protection
+  - package.json: dependencies and scripts
+---
+
 # ArchDesk — Feature Documentation
 
 > Architecture & Design Project Management SaaS for Tier-2 Indian Cities
@@ -121,6 +138,7 @@ Upload, version, review, and collaborate on architectural drawings.
 - Comment count per drawing
 - Comment system supporting both team members and clients (clients comment via portal without login, identified by name)
 - Drawing version history with notes
+- **Upload:** The Drawings page uses a file picker and `POST /api/projects/[id]/drawings/upload` (multipart). The server writes to the **`drawings`** Supabase Storage bucket and persists the public URL on the `Drawing` record (not a hand-pasted URL).
 
 **Storage:** Files stored in Supabase Storage with organised buckets (drawings, site-photos, renders, firm-assets).
 
@@ -294,7 +312,26 @@ Instant, professional cost estimates for Indian construction projects. The demo 
 
 ---
 
-### 11. Client Portal (`/portal/[token]`)
+### 11. 3D Studio (`/3d-studio`)
+
+Floor-plan-to-3D preview module for fast flat visualisation in browser.
+
+**Current MVP capabilities:**
+- Project-scoped floor plan records with normalized geometry payload (`planJson`)
+- Sample floor plan generation for quick demos
+- Rule-based scene generation from 2D walls to 3D wall meshes
+- Live Babylon.js preview canvas with camera orbit and generated walls/floor
+- Scene persistence in database for later editing and export workflows
+
+**Data model additions:**
+- `FloorPlan`: canonical 2D shape + source metadata (`MANUAL`, `DXF`, `PDF`, `IMAGE`)
+- `FlatScene`: generated 3D payload (`sceneJson`) + generation metadata/status
+
+**API:** `GET/POST /api/projects/[id]/floor-plans`, `GET /api/projects/[id]/flat-scenes`, `POST /api/projects/[id]/flat-scenes/generate`
+
+---
+
+### 12. Client Portal (`/portal/[token]`)
 
 Magic-link access for clients to view their project. No app download, no account creation.
 
@@ -317,7 +354,7 @@ Magic-link access for clients to view their project. No app download, no account
 
 ---
 
-### 12. SaaS Plan Tiers
+### 13. SaaS Plan Tiers
 
 Three-tier business model with feature gating.
 
@@ -397,6 +434,7 @@ Each project has a unique `clientToken` (auto-generated cuid). Clients access th
 | Payments | Razorpay (UPI, cards, net banking) |
 | Email | Resend |
 | PDF | @react-pdf/renderer |
+| 3D Rendering | Babylon.js |
 | E2E Testing | Playwright + @clerk/testing |
 | Hosting | Vercel (primary), Fly.io (Mumbai) |
 

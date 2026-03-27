@@ -17,8 +17,13 @@ export default defineConfig({
   },
   projects: [
     {
+      name: "setup-public",
+      testMatch: /global\.setup\.ts/,
+    },
+    {
       name: "chromium-public",
       use: { ...devices["Desktop Chrome"] },
+      dependencies: ["setup-public"],
     },
   ],
   webServer: baseURL.includes("localhost")

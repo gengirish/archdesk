@@ -36,6 +36,21 @@ export async function uploadFile(
   return data;
 }
 
+/** Server-only upload using the service role (API routes, cron, etc.). */
+export async function uploadBufferAdmin(
+  bucket: string,
+  path: string,
+  body: ArrayBuffer | Blob | File,
+  contentType: string
+) {
+  const { data, error } = await supabaseAdmin.storage.from(bucket).upload(path, body, {
+    contentType,
+    upsert: false,
+  });
+  if (error) throw error;
+  return data;
+}
+
 export function getPublicUrl(bucket: string, path: string) {
   const { data } = supabase.storage.from(bucket).getPublicUrl(path);
   return data.publicUrl;
@@ -43,5 +58,10 @@ export function getPublicUrl(bucket: string, path: string) {
 
 export async function deleteFile(bucket: string, path: string) {
   const { error } = await supabase.storage.from(bucket).remove([path]);
+  if (error) throw error;
+}
+
+export async function deleteFileAdmin(bucket: string, path: string) {
+  const { error } = await supabaseAdmin.storage.from(bucket).remove([path]);
   if (error) throw error;
 }

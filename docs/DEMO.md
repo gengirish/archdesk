@@ -1,3 +1,13 @@
+---
+required_docs:
+  - docs/FEATURES.md: features referenced in demo script
+
+sources:
+  - app/(dashboard)/: dashboard page routes
+  - app/portal/: client portal routes
+  - components/layout/: navigation and layout
+---
+
 # ArchDesk — Demo Walkthrough
 
 > A guided tour of ArchDesk for stakeholders, investors, and early users.
@@ -329,6 +339,7 @@ All 5 roles have real Clerk accounts for persona-based demos:
 
 **Show:**
 - 12 drawings with version badges and status (Approved/Pending/Revision Requested)
+- **Upload Drawing** — pick a PDF or image (or CAD where allowed); the app uploads to Supabase Storage and creates the drawing row (no manual file URL)
 - Click into Ground Floor Plan → v1, v2, v3 history + team and client comments
 
 **Say:** "No more 'Plan_Final_v3_FINAL_really_final.dwg'. Version tracking and threaded comments replace the WhatsApp chaos. Clients comment right here."
@@ -413,6 +424,20 @@ All 5 roles have real Clerk accounts for persona-based demos:
 
 ---
 
+### Scene 11: 3D Studio (Floor Plan to Flat Preview)
+
+**URL:** `/3d-studio`
+
+**Show:**
+- Project selector + floor plan selector
+- "Sample Plan" action to generate a default floor layout
+- "Generate 3D" action to create scene payload
+- Interactive Babylon.js preview with orbit camera and generated walls
+
+**Say:** "This is our first floor-plan-to-3D workflow. Architects can start with a sample or imported plan, generate a 3D shell, and preview layout decisions directly in-browser."
+
+---
+
 ## Closing Pitch
 
 ### The Problem
@@ -455,6 +480,7 @@ One desk for everything:
 | Settings | Built (API GET/PATCH) |
 | AI Cost Estimator | Built (interactive, Indian rates, **PDF download**) |
 | Client Portal | Built (magic-link, project timeline, decision inbox) |
+| 3D Studio | Built (MVP: floor plans, 3D scene generation, Babylon.js preview) |
 | Analytics | Built (cash flow, decisions, SLA health, bottlenecks) |
 | SaaS Plan Tiers | Built (Free/Pro/Enterprise, stored in Firm model) |
 | CI/CD | GitHub Actions (typecheck, lint, build, E2E smoke) |

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import {
   Upload,
   FileImage,
@@ -56,6 +56,60 @@ const typeIcons: Record<string, string> = {
 
 const drawingTypes = Object.values(DrawingType);
 
+/** Client-side cap; keep aligned with `/api/projects/:id/drawings/upload` when documented. */
+const MAX_DRAWING_FILE_BYTES = 50 * 1024 * 1024;
+
+const ALLOWED_DRAWING_EXTENSIONS = new Set([
+  "pdf",
+  "png",
+  "jpg",
+  "jpeg",
+  "webp",
+  "dwg",
+  "dxf",
+]);
+
+const ALLOWED_DRAWING_MIMES = new Set([
+  "application/pdf",
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "application/acad",
+  "image/vnd.dxf",
+  "application/octet-stream",
+]);
+
+function fileExtension(name: string): string {
+  const dot = name.lastIndexOf(".");
+  if (dot < 0 || dot === name.length - 1) return "";
+  return name.slice(dot + 1).toLowerCase();
+}
+
+function isAllowedDrawingMime(mime: string): boolean {
+  return ALLOWED_DRAWING_MIMES.has(mime);
+}
+
+/** Returns a user-facing validation message, or `null` if the file passes guards. */
+function validateDrawingFile(file: File): string | null {
+  if (file.size > MAX_DRAWING_FILE_BYTES) {
+    return `File must be ${formatFileSize(MAX_DRAWING_FILE_BYTES)} or smaller`;
+  }
+  const ext = fileExtension(file.name);
+  const extOk = ext !== "" && ALLOWED_DRAWING_EXTENSIONS.has(ext);
+  const mime = file.type.trim();
+  const mimeOk = mime !== "" && isAllowedDrawingMime(mime);
+  if (!extOk && !mimeOk) {
+    return "Use PDF, PNG, JPG/JPEG, WEBP, DWG, or DXF";
+  }
+  return null;
+}
+
+function parseUploadErrorJson(body: unknown): string {
+  if (body === null || typeof body !== "object") return "Failed to upload drawing";
+  const err = (body as { error?: unknown }).error;
+  return typeof err === "string" && err.length > 0 ? err : "Failed to upload drawing";
+}
+
 type DrawingWithProject = {
   id: string;
   name: string;
@@ -84,31 +138,36 @@ export default function DrawingsPage() {
   const { plan } = usePlan();
   const { data: projects, isLoading: projectsLoading, error: projectsError } = useProjects();
   const queryClient = useQueryClient();
+  const drawingFileInputRef = useRef<HTMLInputElement>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [drawingProjectId, setDrawingProjectId] = useState("");
   const [drawingName, setDrawingName] = useState("");
   const [drawingType, setDrawingType] = useState<DrawingType>(DrawingType.PLAN);
-  const [drawingFileUrl, setDrawingFileUrl] = useState("");
+  const [drawingFile, setDrawingFile] = useState<File | null>(null);
 
   const projectList = projects ?? [];
 
-  const createDrawing = useMutation({
-    mutationFn: async (input: {
-      projectId: string;
-      name: string;
-      type: string;
-      fileUrl: string;
-    }) => {
-      const res = await fetch(`/api/projects/${input.projectId}/drawings`, {
+  const uploadDrawing = useMutation({
+    mutationFn: async (input: { projectId: string; name: string; type: DrawingType; file: File }) => {
+      const formData = new FormData();
+      formData.append("file", input.file);
+      formData.append("name", input.name);
+      formData.append("type", input.type);
+
+      const res = await fetch(`/api/projects/${input.projectId}/drawings/upload`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: input.name, type: input.type, fileUrl: input.fileUrl }),
+        body: formData,
       });
       if (!res.ok) {
-        const json = (await res.json()) as { error?: string };
-        throw new Error(json.error ?? "Failed to upload drawing");
+        let message = "Failed to upload drawing";
+        try {
+          message = parseUploadErrorJson(await res.json());
+        } catch {
+          /* non-JSON error body */
+        }
+        throw new Error(message);
       }
-      return res.json();
+      return await res.json();
     },
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: drawingKeys.byProject(vars.projectId) });
@@ -145,21 +204,36 @@ export default function DrawingsPage() {
     setDrawingProjectId("");
     setDrawingName("");
     setDrawingType(DrawingType.PLAN);
-    setDrawingFileUrl("");
+    setDrawingFile(null);
+    if (drawingFileInputRef.current) drawingFileInputRef.current.value = "";
+  }
+
+  function handleDrawingFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null;
+    setDrawingFile(file);
   }
 
   function handleUploadDrawing(e: FormEvent) {
     e.preventDefault();
-    if (!drawingProjectId.trim() || !drawingName.trim() || !drawingFileUrl.trim()) {
-      toast.error("Project, name, and file URL are required");
+    if (!drawingProjectId.trim() || !drawingName.trim()) {
+      toast.error("Project and name are required");
       return;
     }
-    createDrawing.mutate(
+    if (!drawingFile) {
+      toast.error("Choose a file to upload");
+      return;
+    }
+    const fileError = validateDrawingFile(drawingFile);
+    if (fileError) {
+      toast.error(fileError);
+      return;
+    }
+    uploadDrawing.mutate(
       {
         projectId: drawingProjectId.trim(),
         name: drawingName.trim(),
         type: drawingType,
-        fileUrl: drawingFileUrl.trim(),
+        file: drawingFile,
       },
       {
         onSuccess: () => {
@@ -291,7 +365,10 @@ export default function DrawingsPage() {
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Upload Drawing</DialogTitle>
-            <DialogDescription>Add a drawing record linked to a project</DialogDescription>
+            <DialogDescription>
+              Upload a file for a project. PDF, common image formats, and DWG/DXF up to{" "}
+              {formatFileSize(MAX_DRAWING_FILE_BYTES)}.
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleUploadDrawing} className="space-y-4">
             <div className="space-y-2">
@@ -349,16 +426,23 @@ export default function DrawingsPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="drawing-file-url" className="text-sm">
-                File URL
+              <Label htmlFor="drawing-file" className="text-sm">
+                File
               </Label>
               <Input
-                id="drawing-file-url"
-                value={drawingFileUrl}
-                onChange={(e) => setDrawingFileUrl(e.target.value)}
-                placeholder="https://…"
-                className="text-sm"
+                ref={drawingFileInputRef}
+                id="drawing-file"
+                type="file"
+                accept=".pdf,.png,.jpg,.jpeg,.webp,.dwg,.dxf"
+                onChange={handleDrawingFileChange}
+                className="cursor-pointer text-sm file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-secondary-foreground hover:file:bg-secondary/80"
+                aria-required="true"
               />
+              {drawingFile ? (
+                <p className="text-xs text-muted-foreground" aria-live="polite">
+                  Selected: {drawingFile.name} ({formatFileSize(drawingFile.size)})
+                </p>
+              ) : null}
             </div>
             <DialogFooter className="gap-2 sm:gap-0">
               <Button
@@ -369,8 +453,8 @@ export default function DrawingsPage() {
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={createDrawing.isPending} className="text-sm">
-                {createDrawing.isPending ? (
+              <Button type="submit" disabled={uploadDrawing.isPending} className="text-sm">
+                {uploadDrawing.isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : null}
                 Upload
