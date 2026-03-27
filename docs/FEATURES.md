@@ -319,6 +319,7 @@ Floor-plan-to-3D preview module for fast flat visualisation in browser.
 **Current MVP capabilities:**
 - Project-scoped floor plan records with normalized geometry payload (`planJson`)
 - Sample floor plan generation for quick demos
+- Direct floor-plan upload (`PDF`, `DXF`, `PNG`, `JPG`, `JPEG`, `WEBP`) with server-side parsing into canonical geometry
 - Rule-based scene generation from 2D walls to 3D wall meshes
 - Live Babylon.js preview canvas with camera orbit and generated walls/floor
 - Scene persistence in database for later editing and export workflows
@@ -327,7 +328,7 @@ Floor-plan-to-3D preview module for fast flat visualisation in browser.
 - `FloorPlan`: canonical 2D shape + source metadata (`MANUAL`, `DXF`, `PDF`, `IMAGE`)
 - `FlatScene`: generated 3D payload (`sceneJson`) + generation metadata/status
 
-**API:** `GET/POST /api/projects/[id]/floor-plans`, `GET /api/projects/[id]/flat-scenes`, `POST /api/projects/[id]/flat-scenes/generate`
+**API:** `GET/POST /api/projects/[id]/floor-plans`, `POST /api/projects/[id]/floor-plans/upload`, `GET /api/projects/[id]/flat-scenes`, `POST /api/projects/[id]/flat-scenes/generate`
 
 ---
 
@@ -442,13 +443,13 @@ Each project has a unique `clientToken` (auto-generated cuid). Clients access th
 
 ## E2E Test Coverage
 
-42 Playwright tests covering five areas:
+47 Playwright tests covering five areas:
 
 | Suite | Tests | What's verified |
 |-------|-------|-----------------|
 | Landing Page | 8 | Nav, hero, features, Indian market section, footer, navigation |
 | Authentication | 5 | Clerk sign-in/sign-up forms render, unauthenticated redirect |
-| API Routes | 8 | Public portal behavior (404/rate-limit) + protected endpoint rejection checks including decision SLA automation |
+| API Routes | 9 | Public portal behavior (404/rate-limit) + protected endpoint rejection checks including decision SLA automation and floor-plan upload auth guard |
 | Dashboard | 8 | Sign-in via API token, sidebar nav, search, user avatar, page navigation |
 | Feature Workflows | 11 | Billing and analytics routes render expected enterprise decision controls/insights |
 

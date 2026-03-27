@@ -430,11 +430,12 @@ All 5 roles have real Clerk accounts for persona-based demos:
 
 **Show:**
 - Project selector + floor plan selector
+- "Upload Plan" action (PDF/DXF/image) that creates a parsed floor plan record
 - "Sample Plan" action to generate a default floor layout
 - "Generate 3D" action to create scene payload
 - Interactive Babylon.js preview with orbit camera and generated walls
 
-**Say:** "This is our first floor-plan-to-3D workflow. Architects can start with a sample or imported plan, generate a 3D shell, and preview layout decisions directly in-browser."
+**Say:** "This is our first floor-plan-to-3D workflow. Architects can upload a PDF/DXF/image, let ArchDesk convert it into canonical geometry, generate a 3D shell, and preview layout decisions directly in-browser."
 
 ---
 

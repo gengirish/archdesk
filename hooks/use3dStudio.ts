@@ -87,6 +87,42 @@ export function useCreateSampleFloorPlan(projectId: string) {
   });
 }
 
+export function useUploadFloorPlan(projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      file,
+      name,
+      unit,
+      wallHeight,
+      wallThickness,
+    }: {
+      file: File;
+      name?: string;
+      unit?: string;
+      wallHeight?: number;
+      wallThickness?: number;
+    }): Promise<FloorPlanRecord> => {
+      const formData = new FormData();
+      formData.append("file", file);
+      if (name) formData.append("name", name);
+      if (unit) formData.append("unit", unit);
+      if (wallHeight) formData.append("wallHeight", String(wallHeight));
+      if (wallThickness) formData.append("wallThickness", String(wallThickness));
+
+      const res = await fetch(`/api/projects/${projectId}/floor-plans/upload`, {
+        method: "POST",
+        body: formData,
+      });
+      return parseApiResponse<FloorPlanRecord>(res);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: studioKeys.floorPlans(projectId) });
+    },
+  });
+}
+
 export function useGenerateFlatScene(projectId: string) {
   const queryClient = useQueryClient();
 

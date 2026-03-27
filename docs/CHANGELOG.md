@@ -15,6 +15,16 @@ sources:
 
 # ArchDesk — Changelog
 
+## 2026-03-27 — 3D Studio floor-plan upload to 3D flow
+
+- Added `POST /api/projects/[id]/floor-plans/upload` (multipart) with Clerk + firm-scoped auth, file validation, and canonical `planJson` generation from uploaded `PDF`, `DXF`, and image files
+- Added new parser utility `lib/floor-plan-upload.ts` with lightweight geometry extraction (image dimensions, PDF media box, DXF line/polyline parsing) and normalized wall/polygon output
+- Updated `/3d-studio` controls with an **Upload Plan** action that creates a floor plan from file and auto-selects it for generation
+- Added unauthenticated E2E guard for floor-plan upload API (`e2e/api.spec.ts`)
+- Updated docs in `docs/API.md`, `docs/FEATURES.md`, and `docs/DEMO.md` to reflect the new upload pipeline
+
+---
+
 ## 2026-03-27 — Drawings upload (docs & E2E)
 
 - Documented `POST /api/projects/[id]/drawings/upload` (multipart fields, storage path, status codes) in `docs/API.md`; aligned `docs/FEATURES.md` and `docs/DEMO.md` with storage-backed upload from the Drawings UI

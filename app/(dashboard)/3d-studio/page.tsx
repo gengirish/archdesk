@@ -1,8 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useMemo, useState } from "react";
-import { Box, Loader2, Plus, Sparkles } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { Box, Loader2, Plus, Sparkles, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useProjects } from "@/hooks/useProjects";
 import {
@@ -10,6 +10,7 @@ import {
   useGenerateFlatScene,
   useProjectFlatScenes,
   useProjectFloorPlans,
+  useUploadFloorPlan,
 } from "@/hooks/use3dStudio";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,12 +37,14 @@ const FlatSceneCanvas = dynamic(
 
 export default function ThreeDStudioPage() {
   const { data: projects, isLoading: projectsLoading } = useProjects();
+  const uploadInputRef = useRef<HTMLInputElement>(null);
   const [projectId, setProjectId] = useState<string>("");
   const [floorPlanId, setFloorPlanId] = useState<string>("");
 
   const { data: floorPlans, isLoading: floorPlansLoading } = useProjectFloorPlans(projectId);
   const { data: scenes, isLoading: scenesLoading } = useProjectFlatScenes(projectId);
   const createSampleFloorPlan = useCreateSampleFloorPlan(projectId);
+  const uploadFloorPlan = useUploadFloorPlan(projectId);
   const generateScene = useGenerateFlatScene(projectId);
 
   const latestScene = useMemo(() => (scenes && scenes.length > 0 ? scenes[0] : null), [scenes]);
@@ -87,6 +90,29 @@ export default function ThreeDStudioPage() {
         },
         onError: (error) => {
           toast.error(error instanceof Error ? error.message : "Failed to generate scene");
+        },
+      }
+    );
+  }
+
+  async function handleFloorPlanUpload(file: File | null) {
+    if (!file) return;
+    if (!projectId) {
+      toast.error("Select a project first");
+      return;
+    }
+
+    uploadFloorPlan.mutate(
+      {
+        file,
+      },
+      {
+        onSuccess: (created) => {
+          setFloorPlanId(created.id);
+          toast.success(`Uploaded ${created.sourceType.toLowerCase()} floor plan`);
+        },
+        onError: (error) => {
+          toast.error(error instanceof Error ? error.message : "Failed to upload floor plan");
         },
       }
     );
@@ -150,6 +176,30 @@ export default function ThreeDStudioPage() {
             </Select>
 
             <div className="flex gap-2">
+              <input
+                ref={uploadInputRef}
+                type="file"
+                accept=".pdf,.dxf,.png,.jpg,.jpeg,.webp"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0] ?? null;
+                  void handleFloorPlanUpload(file);
+                  event.currentTarget.value = "";
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => uploadInputRef.current?.click()}
+                disabled={!hasProject || uploadFloorPlan.isPending}
+              >
+                {uploadFloorPlan.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Upload className="mr-2 h-4 w-4" />
+                )}
+                Upload Plan
+              </Button>
               <Button
                 type="button"
                 variant="outline"
@@ -179,8 +229,14 @@ export default function ThreeDStudioPage() {
           </div>
 
           {selectedProject && (
-            <div className="rounded-md border border-border/50 bg-secondary/20 px-3 py-2 text-xs text-muted-foreground">
-              Active project: <span className="font-medium text-foreground">{selectedProject.name}</span>
+            <div className="space-y-2 rounded-md border border-border/50 bg-secondary/20 px-3 py-2 text-xs text-muted-foreground">
+              <p>
+                Active project: <span className="font-medium text-foreground">{selectedProject.name}</span>
+              </p>
+              <p>
+                Upload formats: PDF, DXF, PNG, JPG, JPEG, WEBP. Uploaded plans are auto-converted to
+                canonical geometry for scene generation.
+              </p>
             </div>
           )}
         </CardContent>

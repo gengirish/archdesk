@@ -86,6 +86,20 @@ test.describe("API Routes (unauthenticated)", () => {
     expect([401, 403, 404]).toContain(response.status());
   });
 
+  test("POST /api/projects/fake-id/floor-plans/upload rejects without auth", async ({ request }) => {
+    const response = await request.post("/api/projects/fake-id/floor-plans/upload", {
+      headers: jsonHeaders,
+      multipart: {
+        file: {
+          name: "smoke.pdf",
+          mimeType: "application/pdf",
+          buffer: Buffer.from("%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n"),
+        },
+      },
+    });
+    expect([401, 403, 404]).toContain(response.status());
+  });
+
   test("GET /api/portal/fake-token/decisions returns not found", async ({ request }) => {
     const response = await request.get("/api/portal/fake-token/decisions", {
       headers: jsonHeaders,

@@ -144,6 +144,31 @@ Each floor plan item includes `name`, `sourceType`, unit/scaling metadata (`unit
 
 ---
 
+### `POST /api/projects/[id]/floor-plans/upload`
+
+**Auth:** Required  
+**Path:** `id` — project ID (firm-scoped)  
+**Content-Type:** `multipart/form-data`
+
+**Multipart fields:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `file` | file | Yes | Floor plan file (`PDF`, `DXF`, `PNG`, `JPG`, `JPEG`, `WEBP`) up to 20 MiB |
+| `name` | string | No | Optional floor plan label (defaults to file name) |
+| `unit` | string | No | Defaults to `mm` |
+| `scale` | number | No | Positive; defaults to `1` |
+| `wallHeight` | number | No | Positive; defaults to `3000` |
+| `wallThickness` | number | No | Positive; defaults to `200` |
+
+**Behaviour:** Parses uploaded file into canonical `planJson` geometry and creates a `FloorPlan` record with `sourceType` inferred from extension (`PDF`, `DXF`, or `IMAGE`).
+
+**Response:** `{ data: FloorPlan, error: null }` (201)
+
+**Status codes:** 201, 400, 401, 404, 413, 415, 500
+
+---
+
 ### `GET /api/projects/[id]/flat-scenes`
 
 **Auth:** Required  
