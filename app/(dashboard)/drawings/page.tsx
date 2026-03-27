@@ -140,6 +140,8 @@ export default function DrawingsPage() {
   const queryClient = useQueryClient();
   const drawingFileInputRef = useRef<HTMLInputElement>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [selectedDrawing, setSelectedDrawing] = useState<DrawingWithProject | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [drawingProjectId, setDrawingProjectId] = useState("");
   const [drawingName, setDrawingName] = useState("");
   const [drawingType, setDrawingType] = useState<DrawingType>(DrawingType.PLAN);
@@ -206,6 +208,11 @@ export default function DrawingsPage() {
     setDrawingType(DrawingType.PLAN);
     setDrawingFile(null);
     if (drawingFileInputRef.current) drawingFileInputRef.current.value = "";
+  }
+
+  function openDrawingDetails(drawing: DrawingWithProject) {
+    setSelectedDrawing(drawing);
+    setDetailsOpen(true);
   }
 
   function handleDrawingFileChange(e: ChangeEvent<HTMLInputElement>) {
@@ -297,7 +304,20 @@ export default function DrawingsPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {allDrawings.map((drawing) => (
-          <Card key={drawing.id} className="cursor-pointer transition-colors hover:border-primary/30">
+          <Card
+            key={drawing.id}
+            className="cursor-pointer transition-colors hover:border-primary/30"
+            role="button"
+            tabIndex={0}
+            onClick={() => openDrawingDetails(drawing)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                openDrawingDetails(drawing);
+              }
+            }}
+            aria-label={`Open details for ${drawing.name}`}
+          >
             <CardContent className="p-0">
               <div className="flex h-36 items-center justify-center overflow-hidden rounded-t-lg">
                 {isImageUrl(drawing.fileUrl) ? (
@@ -461,6 +481,77 @@ export default function DrawingsPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={detailsOpen}
+        onOpenChange={(open) => {
+          setDetailsOpen(open);
+          if (!open) setSelectedDrawing(null);
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{selectedDrawing?.name ?? "Drawing details"}</DialogTitle>
+            <DialogDescription>
+              {selectedDrawing
+                ? `${selectedDrawing.projectName} • ${selectedDrawing.type}`
+                : "Preview and metadata"}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedDrawing ? (
+            <div className="space-y-4">
+              <div className="overflow-hidden rounded-md border border-border/50 bg-secondary/20">
+                {isImageUrl(selectedDrawing.fileUrl) ? (
+                  <img
+                    src={selectedDrawing.fileUrl}
+                    alt={selectedDrawing.name}
+                    className="h-72 w-full object-contain"
+                  />
+                ) : (
+                  <div className="blueprint-bg flex h-72 items-center justify-center">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-secondary/80 text-xl font-bold text-muted-foreground">
+                      {typeIcons[selectedDrawing.type] ?? "O"}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid gap-3 text-sm sm:grid-cols-2">
+                <div className="rounded-md border border-border/50 px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Status</p>
+                  <p className="mt-1 font-medium">
+                    {statusLabels[selectedDrawing.status] ?? selectedDrawing.status}
+                  </p>
+                </div>
+                <div className="rounded-md border border-border/50 px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Version</p>
+                  <p className="mt-1 font-medium">v{selectedDrawing.version}</p>
+                </div>
+                <div className="rounded-md border border-border/50 px-3 py-2">
+                  <p className="text-xs text-muted-foreground">File size</p>
+                  <p className="mt-1 font-medium">{formatFileSize(selectedDrawing.fileSize ?? 0)}</p>
+                </div>
+                <div className="rounded-md border border-border/50 px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Last updated</p>
+                  <p className="mt-1 font-medium">{formatDate(selectedDrawing.updatedAt)}</p>
+                </div>
+              </div>
+
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button type="button" variant="outline" onClick={() => setDetailsOpen(false)}>
+                  Close
+                </Button>
+                <Button asChild>
+                  <a href={selectedDrawing.fileUrl} target="_blank" rel="noopener noreferrer">
+                    Open File
+                  </a>
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : null}
         </DialogContent>
       </Dialog>
       </div>

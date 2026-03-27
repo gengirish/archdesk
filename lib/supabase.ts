@@ -1,18 +1,24 @@
 import { createClient } from "@supabase/supabase-js";
 
-// ── Browser client (for client components) ───────────────────
-export const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+function getSupabaseBrowserClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !anonKey) {
+    throw new Error("Supabase browser client env vars are missing");
+  }
+  return createClient(supabaseUrl, anonKey);
+}
 
-// ── Server client (for server components & API routes) ───────
-// Uses service role key — has full DB access, bypass RLS
-export const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { autoRefreshToken: false, persistSession: false } }
-);
+function getSupabaseAdminClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error("Supabase admin client env vars are missing");
+  }
+  return createClient(supabaseUrl, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
 
 // ── Storage helpers ───────────────────────────────────────────
 export const BUCKETS = {
@@ -28,6 +34,7 @@ export async function uploadFile(
   file: File,
   options?: { contentType?: string }
 ) {
+  const supabase = getSupabaseBrowserClient();
   const { data, error } = await supabase.storage.from(bucket).upload(path, file, {
     contentType: options?.contentType ?? file.type,
     upsert: false,
@@ -43,6 +50,7 @@ export async function uploadBufferAdmin(
   body: ArrayBuffer | Blob | File,
   contentType: string
 ) {
+  const supabaseAdmin = getSupabaseAdminClient();
   const { data, error } = await supabaseAdmin.storage.from(bucket).upload(path, body, {
     contentType,
     upsert: false,
@@ -52,16 +60,19 @@ export async function uploadBufferAdmin(
 }
 
 export function getPublicUrl(bucket: string, path: string) {
+  const supabase = getSupabaseBrowserClient();
   const { data } = supabase.storage.from(bucket).getPublicUrl(path);
   return data.publicUrl;
 }
 
 export async function deleteFile(bucket: string, path: string) {
+  const supabase = getSupabaseBrowserClient();
   const { error } = await supabase.storage.from(bucket).remove([path]);
   if (error) throw error;
 }
 
 export async function deleteFileAdmin(bucket: string, path: string) {
+  const supabaseAdmin = getSupabaseAdminClient();
   const { error } = await supabaseAdmin.storage.from(bucket).remove([path]);
   if (error) throw error;
 }

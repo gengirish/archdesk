@@ -21,14 +21,6 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      console.error(LOG_TAG, "Supabase URL or service role key is missing");
-      return NextResponse.json(
-        { data: null, error: "File storage is not configured" },
-        { status: 503 }
-      );
-    }
-
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ data: null, error: "Unauthorized" }, { status: 401 });
@@ -44,6 +36,14 @@ export async function POST(
     });
     if (!project) {
       return NextResponse.json({ data: null, error: "Project not found" }, { status: 404 });
+    }
+
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      console.error(LOG_TAG, "Supabase URL or service role key is missing");
+      return NextResponse.json(
+        { data: null, error: "File storage is not configured" },
+        { status: 503 }
+      );
     }
 
     let formData: FormData;
