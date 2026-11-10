@@ -1,7 +1,14 @@
 import { Sidebar } from "@/components/layout/Sidebar";
 import { TopBar } from "@/components/layout/TopBar";
+import { getAuthUser } from "@/lib/auth";
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+// Per-request: ensures the signed-in Clerk user has a DB row (creates one if the
+// user.created webhook was missed) before any page calls the API routes.
+export const dynamic = "force-dynamic";
+
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  await getAuthUser();
+
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar />
