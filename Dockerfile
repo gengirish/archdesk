@@ -1,4 +1,5 @@
-FROM node:18-alpine AS base
+FROM node:24-alpine AS base
+RUN apk add --no-cache libc6-compat openssl
 
 FROM base AS deps
 RUN apk add --no-cache libc6-compat openssl
@@ -9,6 +10,16 @@ RUN npm ci
 
 FROM base AS builder
 WORKDIR /app
+ARG NEXT_PUBLIC_SUPABASE_URL
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+ARG NEXT_PUBLIC_CLERK_SIGN_IN_URL
+ARG NEXT_PUBLIC_CLERK_SIGN_UP_URL
+ARG NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL
+ARG NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL
+ARG NEXT_PUBLIC_RAZORPAY_KEY_ID
+ARG NEXT_PUBLIC_APP_URL
+ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npx prisma generate

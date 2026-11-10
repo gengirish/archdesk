@@ -4,7 +4,7 @@
 #
 
 app = 'archdesk'
-primary_region = 'bom'
+primary_region = 'sin'
 
 [build]
 

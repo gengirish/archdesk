@@ -9,3 +9,12 @@ node_modules
 *.md
 docs
 .cursorrules
+.claude
+.agents
+skills
+skills-lock.json
+e2e
+playwright-report
+test-results
+tsconfig.tsbuildinfo
+.github
