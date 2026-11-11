@@ -1,9 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
-import { ProjectStage } from "@prisma/client";
-
-const PROJECT_STAGES = new Set(Object.values(ProjectStage));
+import { milestoneCreateSchema } from "@/lib/validation/milestone";
 
 export async function GET(
   _request: NextRequest,
@@ -24,8 +22,16 @@ export async function GET(
 
     const milestones = await db.milestone.findMany({
       where: { projectId: params.id },
-      include: { invoices: { orderBy: { createdAt: "desc" } } },
-      orderBy: { createdAt: "asc" },
+      include: {
+        invoices: { orderBy: { createdAt: "desc" } },
+        // Latest client decision, so Billing can show "Approved — note" not just "Closed".
+        clientDecisions: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: { outcome: true, comment: true, respondentName: true, createdAt: true },
+        },
+      },
+      orderBy: [{ dueDate: { sort: "asc", nulls: "last" } }, { createdAt: "asc" }],
     });
 
     return NextResponse.json({ data: milestones, error: null });
@@ -52,15 +58,14 @@ export async function POST(
       return NextResponse.json({ data: null, error: "Project not found" }, { status: 404 });
     }
 
-    const body = await request.json();
-    const { name, stage, amount, dueDate, description, gstPercent } = body;
-
-    if (!name || stage === undefined || stage === null || amount === undefined || amount === null) {
-      return NextResponse.json({ data: null, error: "Name, stage, and amount are required" }, { status: 400 });
+    const parsed = milestoneCreateSchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) {
+      return NextResponse.json(
+        { data: null, error: parsed.error.issues[0]?.message ?? "Invalid milestone" },
+        { status: 400 }
+      );
     }
-    if (!PROJECT_STAGES.has(stage)) {
-      return NextResponse.json({ data: null, error: "Invalid project stage" }, { status: 400 });
-    }
+    const { name, stage, amount, dueDate, description, gstPercent } = parsed.data;
 
     const milestone = await db.milestone.create({
       data: {
@@ -68,9 +73,9 @@ export async function POST(
         name,
         stage,
         amount,
-        dueDate: dueDate ? new Date(dueDate) : undefined,
-        description,
-        gstPercent: gstPercent !== undefined && gstPercent !== null ? gstPercent : 18,
+        dueDate: dueDate ?? undefined,
+        description: description ?? undefined,
+        gstPercent,
       },
       include: { invoices: true },
     });

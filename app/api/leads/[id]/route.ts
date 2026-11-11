@@ -1,11 +1,18 @@
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
+import { generatePortalToken } from "@/lib/portal-token";
 import { NextRequest, NextResponse } from "next/server";
-import { ActivityType, LeadSource, LeadStage, ProjectType } from "@prisma/client";
+import { ActivityType, LeadStage, ProjectType } from "@prisma/client";
+import {
+  firstLeadIssue,
+  leadUpdateSchema,
+  normalizeIndianMobile,
+  stageChangeNote,
+} from "@/lib/validation/lead";
 
-const LEAD_STAGES = new Set(Object.values(LeadStage));
-const LEAD_SOURCES = new Set(Object.values(LeadSource));
-const PROJECT_TYPES = new Set(Object.values(ProjectType));
+const LEAD_INCLUDE = {
+  activities: { orderBy: { createdAt: "desc" as const }, include: { user: true } },
+};
 
 export async function GET(
   _request: NextRequest,
@@ -19,9 +26,7 @@ export async function GET(
 
     const lead = await db.lead.findFirst({
       where: { id: params.id, firmId: user.firmId },
-      include: {
-        activities: { orderBy: { createdAt: "desc" }, include: { user: true } },
-      },
+      include: LEAD_INCLUDE,
     });
 
     if (!lead) {
@@ -45,6 +50,12 @@ export async function PATCH(
     const user = await db.user.findUnique({ where: { clerkId: userId } });
     if (!user) return NextResponse.json({ data: null, error: "User not found" }, { status: 404 });
 
+    const parsed = leadUpdateSchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) {
+      return NextResponse.json({ data: null, error: firstLeadIssue(parsed.error) }, { status: 400 });
+    }
+    const input = parsed.data;
+
     const existing = await db.lead.findFirst({
       where: { id: params.id, firmId: user.firmId },
     });
@@ -52,53 +63,24 @@ export async function PATCH(
       return NextResponse.json({ data: null, error: "Lead not found" }, { status: 404 });
     }
 
-    const body = await request.json();
-
-    if (body.stage !== undefined && body.stage !== null && !LEAD_STAGES.has(body.stage)) {
-      return NextResponse.json({ data: null, error: "Invalid lead stage" }, { status: 400 });
-    }
-    if (body.source !== undefined && body.source !== null && !LEAD_SOURCES.has(body.source)) {
-      return NextResponse.json({ data: null, error: "Invalid lead source" }, { status: 400 });
-    }
-    if (body.projectType !== undefined && body.projectType !== null && !PROJECT_TYPES.has(body.projectType)) {
-      return NextResponse.json({ data: null, error: "Invalid project type" }, { status: 400 });
-    }
-
-    const stageChanged =
-      body.stage !== undefined && body.stage !== null && body.stage !== existing.stage;
+    const stageChanged = input.stage !== undefined && input.stage !== existing.stage;
 
     const lead = await db.$transaction(async (tx) => {
-      if (stageChanged) {
+      if (stageChanged && input.stage) {
         await tx.leadActivity.create({
           data: {
             leadId: existing.id,
             userId: user.id,
             type: ActivityType.STAGE_CHANGE,
-            note: `${existing.stage} → ${body.stage}`,
+            note: stageChangeNote(existing.stage, input.stage),
           },
         });
       }
 
       return tx.lead.update({
         where: { id: existing.id },
-        data: {
-          ...(body.name !== undefined && { name: body.name }),
-          ...(body.phone !== undefined && { phone: body.phone }),
-          ...(body.email !== undefined && { email: body.email }),
-          ...(body.address !== undefined && { address: body.address }),
-          ...(body.projectType !== undefined && { projectType: body.projectType }),
-          ...(body.budget !== undefined && { budget: body.budget }),
-          ...(body.area !== undefined && { area: body.area }),
-          ...(body.source !== undefined && { source: body.source }),
-          ...(body.stage !== undefined && { stage: body.stage }),
-          ...(body.notes !== undefined && { notes: body.notes }),
-          ...(body.followUpAt !== undefined && {
-            followUpAt: body.followUpAt ? new Date(body.followUpAt) : null,
-          }),
-        },
-        include: {
-          activities: { orderBy: { createdAt: "desc" }, include: { user: true } },
-        },
+        data: input,
+        include: LEAD_INCLUDE,
       });
     });
 
@@ -109,7 +91,13 @@ export async function PATCH(
   }
 }
 
-/** Convert lead → client + project (stage WON, convertedProjectId). */
+class AlreadyConvertedError extends Error {}
+
+/**
+ * Convert lead → project (stage WON, convertedProjectId). Reuses an existing
+ * client in the firm with the same normalised mobile number instead of
+ * creating a duplicate.
+ */
 export async function POST(
   _request: NextRequest,
   { params }: { params: { id: string } }
@@ -127,27 +115,46 @@ export async function POST(
       return NextResponse.json({ data: null, error: "Lead not found" }, { status: 404 });
     }
     if (lead.convertedProjectId) {
-      return NextResponse.json({ data: null, error: "Lead already converted" }, { status: 400 });
+      return NextResponse.json({ data: null, error: "Lead already converted" }, { status: 409 });
     }
 
     const projectType = lead.projectType ?? ProjectType.RESIDENTIAL;
+    const leadPhone = normalizeIndianMobile(lead.phone);
 
-    const project = await db.$transaction(async (tx) => {
-      const client = await tx.client.create({
-        data: {
-          firmId: user.firmId,
-          name: lead.name,
-          phone: lead.phone,
-          email: lead.email,
-          address: lead.address,
-          notes: lead.notes,
-        },
-      });
+    // Phones are stored in mixed formats (older rows predate normalisation),
+    // so compare normalised digits in JS rather than with an equality query.
+    const firmClients = leadPhone
+      ? await db.client.findMany({
+          where: { firmId: user.firmId },
+          select: { id: true, phone: true },
+        })
+      : [];
+    const existingClient = leadPhone
+      ? firmClients.find((c) => normalizeIndianMobile(c.phone) === leadPhone)
+      : undefined;
+
+    const result = await db.$transaction(async (tx) => {
+      const clientId =
+        existingClient?.id ??
+        (
+          await tx.client.create({
+            data: {
+              firmId: user.firmId,
+              name: lead.name,
+              phone: leadPhone ?? lead.phone,
+              email: lead.email,
+              address: lead.address,
+              notes: lead.notes,
+            },
+            select: { id: true },
+          })
+        ).id;
 
       const created = await tx.project.create({
         data: {
           firmId: user.firmId,
-          clientId: client.id,
+          clientId,
+          clientToken: generatePortalToken(),
           name: `${lead.name} — Project`,
           type: projectType,
           budget: lead.budget ?? undefined,
@@ -167,23 +174,29 @@ export async function POST(
           leadId: lead.id,
           userId: user.id,
           type: ActivityType.STAGE_CHANGE,
-          note: `${lead.stage} → ${LeadStage.WON} (converted to project)`,
+          note: `${stageChangeNote(lead.stage, LeadStage.WON)} (converted to project)`,
         },
       });
 
-      await tx.lead.update({
-        where: { id: lead.id },
-        data: {
-          stage: LeadStage.WON,
-          convertedProjectId: created.id,
-        },
+      // Conditional claim: if a concurrent request already converted this lead,
+      // throw so this transaction (client + project) rolls back.
+      const claimed = await tx.lead.updateMany({
+        where: { id: lead.id, convertedProjectId: null },
+        data: { stage: LeadStage.WON, convertedProjectId: created.id },
       });
+      if (claimed.count === 0) throw new AlreadyConvertedError();
 
       return created;
     });
 
-    return NextResponse.json({ data: project, error: null }, { status: 201 });
+    return NextResponse.json(
+      { data: { ...result, reusedClient: Boolean(existingClient) }, error: null },
+      { status: 201 }
+    );
   } catch (error) {
+    if (error instanceof AlreadyConvertedError) {
+      return NextResponse.json({ data: null, error: "Lead already converted" }, { status: 409 });
+    }
     console.error("[API_LEADS_ID_CONVERT_POST]", error);
     return NextResponse.json({ data: null, error: "Internal server error" }, { status: 500 });
   }

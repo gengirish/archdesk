@@ -68,7 +68,7 @@ components/
 lib/               # Utilities (db, supabase, razorpay)
 prisma/            # Schema and migrations
 types/             # Shared TypeScript types
-docs/              # Feature docs, API docs, schema docs
+docs/              # Feature, API, schema and ICP docs
 e2e/               # Playwright E2E tests
 ```
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState, useEffect, type FormEvent } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
   Building2,
@@ -10,6 +11,7 @@ import {
   LayoutGrid,
   List,
   Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import { ProjectType } from "@prisma/client";
 import { toast } from "sonner";
@@ -37,6 +39,11 @@ import {
 } from "@/components/ui/dialog";
 import { formatINRShort, STAGE_LABELS, STAGE_COLORS } from "@/lib/utils";
 import { useProjectStore } from "@/store/useProjectStore";
+import {
+  firstIssue,
+  isProjectOverdue,
+  projectCreateSchema,
+} from "@/lib/validation/project";
 
 const projectTypes = [
   "ALL",
@@ -78,6 +85,8 @@ function ProjectsContent() {
   const [projectBudget, setProjectBudget] = useState("");
   const [projectArea, setProjectArea] = useState("");
   const [projectLocation, setProjectLocation] = useState("");
+  const [projectStartDate, setProjectStartDate] = useState("");
+  const [projectDeadline, setProjectDeadline] = useState("");
 
   const clientList = clients ?? [];
 
@@ -88,23 +97,29 @@ function ProjectsContent() {
     setProjectBudget("");
     setProjectArea("");
     setProjectLocation("");
+    setProjectStartDate("");
+    setProjectDeadline("");
   }
 
   async function handleCreateProject(e: FormEvent) {
     e.preventDefault();
-    if (!projectName.trim() || !selectedClientId || !selectedType) {
-      toast.error("Name, client, and type are required");
+    const input = {
+      name: projectName,
+      clientId: selectedClientId,
+      type: selectedType,
+      budget: projectBudget,
+      area: projectArea,
+      location: projectLocation,
+      startDate: projectStartDate,
+      deadline: projectDeadline,
+    };
+    const check = projectCreateSchema.safeParse(input);
+    if (!check.success) {
+      toast.error(firstIssue(check.error));
       return;
     }
     createProject.mutate(
-      {
-        name: projectName.trim(),
-        clientId: selectedClientId,
-        type: selectedType,
-        budget: projectBudget ? parseFloat(projectBudget) : undefined,
-        area: projectArea ? parseFloat(projectArea) : undefined,
-        location: projectLocation || undefined,
-      },
+      input,
       {
         onSuccess: () => {
           toast.success("Project created");
@@ -148,8 +163,8 @@ function ProjectsContent() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-2xl font-medium tracking-tight">Projects</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {projectList.length} projects &middot;{" "}
@@ -164,7 +179,7 @@ function ProjectsContent() {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 sm:max-w-xs">
+        <div className="relative w-full sm:w-auto sm:max-w-xs sm:flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search projects..."
@@ -174,7 +189,7 @@ function ProjectsContent() {
           />
         </div>
         <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="min-w-0 flex-1 sm:w-40 sm:flex-none" aria-label="Filter by type">
             <Filter className="mr-2 h-3 w-3" />
             <SelectValue placeholder="Type" />
           </SelectTrigger>
@@ -187,7 +202,7 @@ function ProjectsContent() {
           </SelectContent>
         </Select>
         <Select value={stageFilter} onValueChange={setStageFilter}>
-          <SelectTrigger className="w-48">
+          <SelectTrigger className="min-w-0 flex-1 sm:w-48 sm:flex-none" aria-label="Filter by stage">
             <SelectValue placeholder="Stage" />
           </SelectTrigger>
           <SelectContent>
@@ -201,12 +216,18 @@ function ProjectsContent() {
         </Select>
         <div className="ml-auto flex items-center gap-1 rounded-md border border-border/50 p-0.5">
           <button
+            type="button"
+            aria-label="Grid view"
+            aria-pressed={viewMode === "grid"}
             onClick={() => setViewMode("grid")}
             className={`rounded p-1.5 transition-colors ${viewMode === "grid" ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             <LayoutGrid className="h-4 w-4" />
           </button>
           <button
+            type="button"
+            aria-label="List view"
+            aria-pressed={viewMode === "list"}
             onClick={() => setViewMode("list")}
             className={`rounded p-1.5 transition-colors ${viewMode === "list" ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
@@ -230,10 +251,12 @@ function ProjectsContent() {
       {viewMode === "grid" && filtered.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((project) => (
-            <Card
+            <Link
               key={project.id}
-              className="cursor-pointer transition-colors hover:border-primary/30"
+              href={`/projects/${project.id}`}
+              className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
+            <Card className="h-full cursor-pointer transition-colors hover:border-primary/30">
               <CardContent className="p-5">
                 <div className="flex items-start justify-between">
                   <div className="min-w-0 flex-1">
@@ -272,16 +295,23 @@ function ProjectsContent() {
                     {project.location}
                   </p>
                 )}
+                {isProjectOverdue(project) && (
+                  <p className="mt-2 flex items-center gap-1 text-[11px] font-medium text-destructive">
+                    <AlertTriangle className="h-3 w-3" />
+                    Past deadline
+                  </p>
+                )}
               </CardContent>
             </Card>
+            </Link>
           ))}
         </div>
       )}
 
       {/* List view */}
       {viewMode === "list" && filtered.length > 0 && (
-        <Card>
-          <div className="divide-y divide-border/50">
+        <Card className="overflow-x-auto">
+          <div className="min-w-[640px] divide-y divide-border/50">
             <div className="grid grid-cols-6 gap-4 px-5 py-3 text-xs font-medium text-muted-foreground">
               <span className="col-span-2">Project</span>
               <span>Type</span>
@@ -290,9 +320,10 @@ function ProjectsContent() {
               <span className="text-right">Budget</span>
             </div>
             {filtered.map((project) => (
-              <div
+              <Link
                 key={project.id}
-                className="grid cursor-pointer grid-cols-6 items-center gap-4 px-5 py-3 transition-colors hover:bg-secondary/30"
+                href={`/projects/${project.id}`}
+                className="grid cursor-pointer grid-cols-6 items-center gap-4 px-5 py-3 transition-colors hover:bg-secondary/30 focus-visible:bg-secondary/30 focus-visible:outline-none"
               >
                 <div className="col-span-2 min-w-0">
                   <div className="truncate text-sm font-medium">{project.name}</div>
@@ -319,7 +350,7 @@ function ProjectsContent() {
                 <span className="text-right text-xs font-medium">
                   {formatINRShort(project.budget ?? 0)}
                 </span>
-              </div>
+              </Link>
             ))}
           </div>
         </Card>
@@ -425,6 +456,33 @@ function ProjectsContent() {
                 placeholder="City or site"
                 className="text-sm"
               />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="project-start" className="text-sm">
+                  Start date
+                </Label>
+                <Input
+                  id="project-start"
+                  type="date"
+                  value={projectStartDate}
+                  onChange={(e) => setProjectStartDate(e.target.value)}
+                  className="text-sm"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="project-deadline" className="text-sm">
+                  Deadline
+                </Label>
+                <Input
+                  id="project-deadline"
+                  type="date"
+                  value={projectDeadline}
+                  min={projectStartDate || undefined}
+                  onChange={(e) => setProjectDeadline(e.target.value)}
+                  className="text-sm"
+                />
+              </div>
             </div>
             <DialogFooter className="gap-2 sm:gap-0">
               <Button

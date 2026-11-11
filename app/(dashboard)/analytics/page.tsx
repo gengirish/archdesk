@@ -164,7 +164,7 @@ export default function AnalyticsPage() {
     <FeatureGate feature="analytics" plan={plan}>
       <div className="space-y-6 text-foreground">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
+          <div className="min-w-0">
             <h1 className="text-2xl font-medium tracking-tight">Analytics</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Deep insights into your firm&apos;s performance
@@ -461,8 +461,9 @@ export default function AnalyticsPage() {
                 {data.decisionInsights.bottlenecksByProject.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No decision bottlenecks detected.</p>
                 ) : (
-                  <div className="divide-y divide-border/50">
-                    <div className="grid grid-cols-[1.5fr_auto_auto_auto_auto_auto] gap-3 pb-3 text-xs font-medium text-muted-foreground">
+                  <div className="-mx-1 overflow-x-auto px-1">
+                  <div className="min-w-[560px] divide-y divide-border/50">
+                    <div className="grid grid-cols-[minmax(0,1.5fr)_auto_auto_auto_auto_auto] gap-3 pb-3 text-xs font-medium text-muted-foreground">
                       <span>Project</span>
                       <span className="text-right">Open</span>
                       <span className="text-right">Oldest Open</span>
@@ -473,7 +474,7 @@ export default function AnalyticsPage() {
                     {data.decisionInsights.bottlenecksByProject.map((row) => (
                       <div
                         key={row.projectId}
-                        className="grid grid-cols-[1.5fr_auto_auto_auto_auto_auto] items-center gap-3 py-3 text-sm"
+                        className="grid grid-cols-[minmax(0,1.5fr)_auto_auto_auto_auto_auto] items-center gap-3 py-3 text-sm"
                       >
                         <span className="truncate font-medium">{row.projectName}</span>
                         <span className="text-right tabular-nums">{row.openRequests}</span>
@@ -491,6 +492,7 @@ export default function AnalyticsPage() {
                       </div>
                     ))}
                   </div>
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -504,7 +506,7 @@ export default function AnalyticsPage() {
                   <p className="text-sm text-muted-foreground">No client data yet.</p>
                 ) : (
                   <div className="divide-y divide-border/50">
-                    <div className="grid grid-cols-[auto_1fr_auto_auto] gap-3 pb-3 text-xs font-medium text-muted-foreground sm:gap-4">
+                    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto_auto] gap-3 pb-3 text-xs font-medium text-muted-foreground sm:gap-4">
                       <span className="w-8">#</span>
                       <span>Client</span>
                       <span className="text-right">Projects</span>
@@ -513,7 +515,7 @@ export default function AnalyticsPage() {
                     {data.topClients.map((c, idx) => (
                       <div
                         key={c.name + idx}
-                        className="grid grid-cols-[auto_1fr_auto_auto] items-center gap-3 py-3 text-sm sm:gap-4"
+                        className="grid grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-3 py-3 text-sm sm:gap-4"
                       >
                         <span className="w-8 text-xs text-muted-foreground tabular-nums">
                           {idx + 1}

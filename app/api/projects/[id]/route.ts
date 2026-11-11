@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
+import type { Prisma } from "@prisma/client";
 import type { ApiResponse, ProjectWithRelations } from "@/types";
+import { firstIssue, projectUpdateSchema } from "@/lib/validation/project";
 
 export async function GET(
   _request: NextRequest,
@@ -60,19 +62,40 @@ export async function PATCH(
       return NextResponse.json({ data: null, error: "Project not found" }, { status: 404 });
     }
 
-    const body = await request.json();
+    const parsed = projectUpdateSchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) {
+      return NextResponse.json({ data: null, error: firstIssue(parsed.error) }, { status: 400 });
+    }
+    const input = parsed.data;
+
+    // Validate the date pair against stored values when only one side changes.
+    const startDate = input.startDate !== undefined ? input.startDate : existing.startDate;
+    const deadline = input.deadline !== undefined ? input.deadline : existing.deadline;
+    if (startDate && deadline && deadline < startDate) {
+      return NextResponse.json(
+        { data: null, error: "Deadline can't be before the start date" },
+        { status: 400 }
+      );
+    }
+
+    if (input.clientId !== undefined) {
+      const client = await db.client.findFirst({
+        where: { id: input.clientId, firmId: user.firmId },
+        select: { id: true },
+      });
+      if (!client) {
+        return NextResponse.json({ data: null, error: "Client not found" }, { status: 404 });
+      }
+    }
+
+    // Keep stage and status consistent: finishing one finishes the other.
+    const data: Prisma.ProjectUncheckedUpdateInput = { ...input };
+    if (input.stage === "COMPLETED" && input.status === undefined) data.status = "COMPLETED";
+    if (input.status === "COMPLETED" && input.stage === undefined) data.stage = "COMPLETED";
 
     const project = await db.project.update({
       where: { id: params.id },
-      data: {
-        ...(body.name !== undefined && { name: body.name }),
-        ...(body.description !== undefined && { description: body.description }),
-        ...(body.stage !== undefined && { stage: body.stage }),
-        ...(body.status !== undefined && { status: body.status }),
-        ...(body.budget !== undefined && { budget: body.budget }),
-        ...(body.area !== undefined && { area: body.area }),
-        ...(body.location !== undefined && { location: body.location }),
-      },
+      data,
       include: {
         client: true,
         team: { include: { user: true } },

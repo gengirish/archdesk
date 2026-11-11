@@ -69,6 +69,7 @@ export type CreateClientInput = {
   email?: string;
   address?: string;
   city?: string;
+  state?: string;
 };
 
 export type CreateLeadInput = {

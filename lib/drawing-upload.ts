@@ -1,6 +1,11 @@
 /** Validation and filename helpers for drawing file uploads (API routes). */
 
-export const MAX_DRAWING_UPLOAD_BYTES = 50 * 1024 * 1024; // 50 MiB
+/**
+ * 4 MiB: Vercel Functions reject request bodies over 4.5 MB, so anything larger
+ * would fail at the platform edge with an opaque 413. Keep in sync with
+ * MAX_SERVER_UPLOAD_BYTES in lib/storage.ts (not imported: this file is client-safe).
+ */
+export const MAX_DRAWING_UPLOAD_BYTES = 4 * 1024 * 1024;
 
 const ALLOWED_EXTENSIONS = new Set([
   "pdf",

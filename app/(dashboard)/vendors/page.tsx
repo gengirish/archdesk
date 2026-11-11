@@ -117,8 +117,8 @@ export default function VendorsPage() {
   return (
     <FeatureGate feature="vendors" plan={plan}>
       <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-2xl font-medium tracking-tight">Vendors</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {vendorsList.length} vendors in your network
@@ -231,7 +231,7 @@ export default function VendorsPage() {
       </Dialog>
 
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 sm:max-w-xs">
+        <div className="relative w-full sm:w-auto sm:max-w-xs sm:flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search vendors..."
@@ -241,7 +241,7 @@ export default function VendorsPage() {
           />
         </div>
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-full sm:w-40" aria-label="Filter by category">
             <SelectValue placeholder="Category" />
           </SelectTrigger>
           <SelectContent>

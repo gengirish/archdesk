@@ -28,7 +28,7 @@ const FlatSceneCanvas = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-[460px] items-center justify-center rounded-md border border-border/50">
+      <div className="flex h-[320px] sm:h-[460px] items-center justify-center rounded-md border border-border/50">
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
       </div>
     ),
@@ -120,8 +120,8 @@ export default function ThreeDStudioPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-2xl font-medium tracking-tight">3D Studio</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Convert floor plans into interactive 3D flat previews with Babylon.js
@@ -175,7 +175,7 @@ export default function ThreeDStudioPage() {
               </SelectContent>
             </Select>
 
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <input
                 ref={uploadInputRef}
                 type="file"
@@ -251,7 +251,7 @@ export default function ThreeDStudioPage() {
         </CardHeader>
         <CardContent>
           {!latestScene && !scenesLoading && (
-            <div className="flex h-[460px] flex-col items-center justify-center gap-2 rounded-md border border-dashed border-border/60">
+            <div className="flex h-[320px] sm:h-[460px] flex-col items-center justify-center gap-2 rounded-md border border-dashed border-border/60">
               <p className="text-sm text-muted-foreground">No generated scene yet</p>
               <p className="text-xs text-muted-foreground/80">
                 Create a sample floor plan, then click Generate 3D
@@ -260,7 +260,7 @@ export default function ThreeDStudioPage() {
           )}
 
           {scenesLoading && (
-            <div className="flex h-[460px] items-center justify-center rounded-md border border-border/50">
+            <div className="flex h-[320px] sm:h-[460px] items-center justify-center rounded-md border border-border/50">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
           )}

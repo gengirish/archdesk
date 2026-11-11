@@ -4,6 +4,23 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { deliverClientNudge } from "@/lib/client-nudge";
 
+/** Manual nudges: at most one successful nudge per milestone in this window. */
+const NUDGE_COOLDOWN_HOURS = 12;
+
+function friendlyDeliveryError(raw?: string): string {
+  if (!raw) return "Couldn't send the nudge. Please try again.";
+  if (/api key|not configured|unauthori[sz]ed|forbidden/i.test(raw)) {
+    return `Email isn't set up correctly (${raw}). Ask an admin to check RESEND_API_KEY and EMAIL_FROM.`;
+  }
+  if (/client email is missing/i.test(raw)) {
+    return "This client has no email address. Add one to the client first.";
+  }
+  if (/domain|from address|verify/i.test(raw)) {
+    return `The sender address isn't verified with the email provider (${raw}).`;
+  }
+  return `Couldn't send the nudge: ${raw}`;
+}
+
 const clientNudgeSchema = z.object({
   channel: z.enum(["email", "whatsapp"]).default("email"),
   message: z.string().trim().max(500).optional(),
@@ -80,7 +97,31 @@ export async function POST(
       );
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() || "http://localhost:3000";
+    const since = new Date(Date.now() - NUDGE_COOLDOWN_HOURS * 60 * 60 * 1000);
+    const recent = await db.clientNudge.findFirst({
+      where: { milestoneId: milestone.id, status: { in: ["SENT", "QUEUED"] }, createdAt: { gte: since } },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true },
+    });
+    if (recent) {
+      const nextAt = new Date(recent.createdAt.getTime() + NUDGE_COOLDOWN_HOURS * 60 * 60 * 1000);
+      const time = nextAt.toLocaleString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        day: "2-digit",
+        month: "short",
+        hour: "numeric",
+        minute: "2-digit",
+      });
+      return NextResponse.json(
+        {
+          data: null,
+          error: `The client was already nudged in the last ${NUDGE_COOLDOWN_HOURS} hours. You can nudge again after ${time}.`,
+        },
+        { status: 429, headers: { "Retry-After": String(Math.ceil((nextAt.getTime() - Date.now()) / 1000)) } }
+      );
+    }
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() || request.nextUrl.origin;
     const portalUrl = `${appUrl}/portal/${project.clientToken}`;
     const channelUpper = parsed.data.channel.toUpperCase() as "EMAIL" | "WHATSAPP";
     const idempotencySeed = `${project.id}:${milestone.id}:${milestone.clientDecisionOpenedAt?.getTime() ?? "na"}`;
@@ -121,11 +162,12 @@ export async function POST(
     });
 
     if (delivery.status === "FAILED") {
+      console.error(
+        "[API_MILESTONE_CLIENT_NUDGE_POST] delivery failed",
+        { nudgeId: persisted.id, provider: delivery.provider, error: delivery.errorMessage }
+      );
       return NextResponse.json(
-        {
-          data: null,
-          error: delivery.errorMessage ?? "Failed to send nudge",
-        },
+        { data: null, error: friendlyDeliveryError(delivery.errorMessage) },
         { status: 502 }
       );
     }

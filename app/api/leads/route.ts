@@ -1,11 +1,10 @@
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
-import { LeadSource, LeadStage, ProjectType } from "@prisma/client";
+import { LeadStage } from "@prisma/client";
+import { firstLeadIssue, leadCreateSchema } from "@/lib/validation/lead";
 
-const LEAD_SOURCES = new Set(Object.values(LeadSource));
 const LEAD_STAGES = new Set(Object.values(LeadStage));
-const PROJECT_TYPES = new Set(Object.values(ProjectType));
 
 export async function GET(request: NextRequest) {
   try {
@@ -46,32 +45,13 @@ export async function POST(request: NextRequest) {
     const user = await db.user.findUnique({ where: { clerkId: userId } });
     if (!user) return NextResponse.json({ data: null, error: "User not found" }, { status: 404 });
 
-    const body = await request.json();
-    const { name, phone, source, email, projectType, budget, area, notes, followUpAt } = body;
-
-    if (!name || !phone || source === undefined || source === null || source === "") {
-      return NextResponse.json({ data: null, error: "Name, phone, and source are required" }, { status: 400 });
-    }
-    if (!LEAD_SOURCES.has(source)) {
-      return NextResponse.json({ data: null, error: "Invalid lead source" }, { status: 400 });
-    }
-    if (projectType !== undefined && projectType !== null && !PROJECT_TYPES.has(projectType)) {
-      return NextResponse.json({ data: null, error: "Invalid project type" }, { status: 400 });
+    const parsed = leadCreateSchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) {
+      return NextResponse.json({ data: null, error: firstLeadIssue(parsed.error) }, { status: 400 });
     }
 
     const lead = await db.lead.create({
-      data: {
-        firmId: user.firmId,
-        name,
-        phone,
-        source,
-        email,
-        projectType,
-        budget,
-        area,
-        notes,
-        followUpAt: followUpAt ? new Date(followUpAt) : undefined,
-      },
+      data: { firmId: user.firmId, ...parsed.data },
       include: {
         activities: { orderBy: { createdAt: "desc" }, include: { user: true } },
       },

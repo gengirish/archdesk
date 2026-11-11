@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FileText, MapPin, CalendarDays, Camera, CheckCircle2, Circle } from "lucide-react";
 import { db } from "@/lib/db";
+import { isPlausiblePortalToken } from "@/lib/portal-token";
 import { formatINR, formatDate, calculateGST, STAGE_LABELS, isOverdue } from "@/lib/utils";
 import type { MilestoneStatus, ProjectStage } from "@prisma/client";
 import { MilestoneDecisionCard } from "@/components/portal/milestone-decision-card";
@@ -34,7 +35,7 @@ function milestonePaymentLabel(
 
 export default async function ClientPortalPage({ params }: { params: { token: string } }) {
   const token = params.token?.trim();
-  if (!token) notFound();
+  if (!token || !isPlausiblePortalToken(token)) notFound();
 
   const project = await db.project.findUnique({
     where: { clientToken: token },

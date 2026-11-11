@@ -28,6 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { MobileNav } from "@/components/layout/MobileNav";
 import type { ProjectWithRelations } from "@/types";
 import type { ClientWithProjectCount } from "@/hooks/useClients";
 import type { LeadWithActivityLog } from "@/hooks/useLeads";
@@ -163,7 +164,7 @@ export function TopBar() {
     filteredLeads.length > 0;
 
   function goToProject(p: ProjectWithRelations) {
-    router.push(`/projects?q=${encodeURIComponent(p.name)}`);
+    router.push(`/projects/${p.id}`);
     setSearchOpen(false);
     setPaletteQuery("");
   }
@@ -181,7 +182,9 @@ export function TopBar() {
   }
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b border-border/50 px-6">
+    <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-border/50 px-3 sm:px-6">
+      <div className="flex min-w-0 items-center gap-1 sm:gap-2">
+      <MobileNav />
       <Dialog
         open={searchOpen}
         onOpenChange={(open) => {
@@ -189,9 +192,20 @@ export function TopBar() {
           if (!open) setPaletteQuery("");
         }}
       >
+        {/* Mobile: icon-only search trigger */}
+        <button
+          type="button"
+          onClick={() => setSearchOpen(true)}
+          className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:hidden"
+          aria-label="Search projects, clients and leads"
+        >
+          <Search className="h-4 w-4" />
+        </button>
+        {/* sm+: search field look-alike */}
         <div
           role="button"
           tabIndex={0}
+          aria-label="Search projects, clients and leads"
           onClick={() => setSearchOpen(true)}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
@@ -199,24 +213,24 @@ export function TopBar() {
               setSearchOpen(true);
             }
           }}
-          className="flex cursor-pointer items-center gap-2 rounded-md border border-border/50 bg-secondary/50 px-3 py-1.5 outline-none transition-colors hover:bg-secondary/70 focus-visible:ring-2 focus-visible:ring-ring"
+          className="hidden min-w-0 cursor-pointer items-center gap-2 rounded-md border border-border/50 bg-secondary/50 px-3 py-1.5 outline-none transition-colors hover:bg-secondary/70 focus-visible:ring-2 focus-visible:ring-ring sm:flex"
         >
           <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
           <input
             type="text"
             readOnly
             placeholder="Search projects, clients..."
-            className="pointer-events-none w-64 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+            className="pointer-events-none w-40 min-w-0 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none lg:w-64"
             tabIndex={-1}
             aria-hidden
           />
-          <kbd className="hidden shrink-0 rounded border border-border/50 bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground sm:inline-block">
+          <kbd className="hidden shrink-0 rounded border border-border/50 bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground md:inline-block">
             ⌘K
           </kbd>
         </div>
 
         <DialogContent
-          className="max-w-lg gap-0 overflow-hidden p-0 sm:rounded-lg"
+          className="max-w-[calc(100vw-2rem)] gap-0 overflow-hidden rounded-lg p-0 sm:max-w-lg"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
           <DialogTitle className="sr-only">Search</DialogTitle>
@@ -345,8 +359,9 @@ export function TopBar() {
           </div>
         </DialogContent>
       </Dialog>
+      </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex shrink-0 items-center gap-2 sm:gap-4">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
@@ -360,7 +375,7 @@ export function TopBar() {
               ) : null}
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80">
+          <DropdownMenuContent align="end" className="w-[min(20rem,calc(100vw-1.5rem))]">
             <DropdownMenuLabel>Recent activity</DropdownMenuLabel>
             <DropdownMenuSeparator />
             {analyticsLoading ? (
