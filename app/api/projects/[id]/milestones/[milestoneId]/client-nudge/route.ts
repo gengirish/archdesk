@@ -10,7 +10,7 @@ const NUDGE_COOLDOWN_HOURS = 12;
 function friendlyDeliveryError(raw?: string): string {
   if (!raw) return "Couldn't send the nudge. Please try again.";
   if (/api key|not configured|unauthori[sz]ed|forbidden/i.test(raw)) {
-    return `Email isn't set up correctly (${raw}). Ask an admin to check RESEND_API_KEY and EMAIL_FROM.`;
+    return `Email isn't set up correctly (${raw}). Ask an admin to check the AgentMail (or Resend) settings.`;
   }
   if (/client email is missing/i.test(raw)) {
     return "This client has no email address. Add one to the client first.";
