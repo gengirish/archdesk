@@ -8,8 +8,13 @@ on:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    # Pinned: Playwright doesn't support ubuntu-latest (26.04) yet.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
+    # Clerk keys are needed to prerender pages (build) and to boot the dev server (E2E).
+    env:
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -36,8 +41,13 @@ jobs:
         run: npm run build
 
   e2e_public:
-    runs-on: ubuntu-latest
+    # Pinned: Playwright doesn't support ubuntu-latest (26.04) yet.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
+    # Clerk keys are needed to prerender pages (build) and to boot the dev server (E2E).
+    env:
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
