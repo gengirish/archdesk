@@ -196,15 +196,24 @@ export function EstimatePdfDocument({ result, inputs }: EstimatePdfProps) {
             <Text style={s.metaValue}>{inputs.includeInterior ? "Yes" : "No"}</Text>
           </View>
           <View style={s.metaCell}>
-            <Text style={s.metaLabel}>Rate Band</Text>
+            <Text style={s.metaLabel}>Shell Rate Band</Text>
             <Text style={s.metaValue}>
               {fmtINR(result.rateRange.min)} – {fmtINR(result.rateRange.max)} / sqft
             </Text>
           </View>
           <View style={s.metaCell}>
-            <Text style={s.metaLabel}>Rate Used</Text>
+            <Text style={s.metaLabel}>Shell Rate Used</Text>
             <Text style={s.metaValue}>{fmtINR(result.rateRange.used)} / sqft</Text>
           </View>
+          {result.interiorRateRange ? (
+            <View style={s.metaCell}>
+              <Text style={s.metaLabel}>Rate With Interior</Text>
+              <Text style={s.metaValue}>
+                {fmtINR(result.interiorRateRange.used)} / sqft (band{" "}
+                {fmtINR(result.interiorRateRange.min)} – {fmtINR(result.interiorRateRange.max)})
+              </Text>
+            </View>
+          ) : null}
           <View style={s.metaCell}>
             <Text style={s.metaLabel}>Timeline</Text>
             <Text style={s.metaValue}>{result.timeline}</Text>

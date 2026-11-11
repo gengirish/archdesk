@@ -16,12 +16,20 @@ export function formatINR(amount: number): string {
   }).format(amount);
 }
 
-// Short format: ₹1.2L, ₹4.5Cr
+// Short format: ₹3.5L, ₹1.5Cr, ₹2L (never ".0", never "K").
+// Below one lakh the full amount is shown with Indian grouping: ₹85,000.
 export function formatINRShort(amount: number): string {
-  if (amount >= 10_000_000) return `₹${(amount / 10_000_000).toFixed(1)}Cr`;
-  if (amount >= 100_000) return `₹${(amount / 100_000).toFixed(1)}L`;
-  if (amount >= 1_000) return `₹${(amount / 1_000).toFixed(0)}K`;
-  return formatINR(amount);
+  if (!Number.isFinite(amount)) return formatINR(0);
+  const sign = amount < 0 ? "-" : "";
+  const abs = Math.abs(amount);
+  const short = (n: number, unit: string) => {
+    const rounded = Math.round(n * 10) / 10;
+    return `${sign}₹${rounded.toFixed(1).replace(/\.0$/, "")}${unit}`;
+  };
+  // Round first so ₹99,96,000 reads ₹1Cr rather than ₹100L.
+  if (Math.round((abs / 10_000_000) * 10) / 10 >= 1) return short(abs / 10_000_000, "Cr");
+  if (Math.round((abs / 100_000) * 10) / 10 >= 1 && abs >= 99_950) return short(abs / 100_000, "L");
+  return `${sign}${formatINR(abs)}`;
 }
 
 // ── Date formatting (Indian style) ───────────────────────────

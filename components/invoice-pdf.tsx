@@ -96,7 +96,8 @@ export function InvoicePdfDocument({ invoice, gst, firm, client, project, milest
       <Page size="A4" style={styles.page}>
         <View style={[styles.headerRow, { borderBottomColor: accent }]}>
           <View style={styles.firmBlock}>
-            {firm.logo ? (
+            {/* react-pdf renders PNG / JPEG only; SVG and WebP logos are skipped. */}
+            {firm.logo && /\.(png|jpe?g)(\?|$)/i.test(firm.logo) ? (
               // eslint-disable-next-line jsx-a11y/alt-text -- react-pdf Image has no alt
               <Image src={firm.logo} style={styles.logo} />
             ) : null}

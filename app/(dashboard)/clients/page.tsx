@@ -1,24 +1,16 @@
 "use client";
 
-import { Suspense, useState, useEffect, type FormEvent } from "react";
+import { Suspense, useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
-import { Plus, Search, Users, Phone, Mail, MapPin, Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import { Plus, Search, Users, Phone, Mail, MapPin, Loader2, StickyNote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { useClients, useCreateClient } from "@/hooks/useClients";
+import { useClients, type ClientWithProjectCount } from "@/hooks/useClients";
+import { ClientFormDialog } from "@/components/clients/ClientFormDialog";
+import { matchesClientSearch } from "@/lib/validation/client";
 
 function getInitials(name: string): string {
   return name
@@ -44,56 +36,23 @@ function ClientsContent() {
     const q = searchParams.get("q");
     if (q) setSearch(q);
   }, [searchParams]);
-  const [addClientOpen, setAddClientOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [city, setCity] = useState("");
-  const [clientState, setClientState] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<ClientWithProjectCount | null>(null);
   const { data: clients, isLoading } = useClients();
-  const createClient = useCreateClient();
 
-  const resetClientForm = () => {
-    setName("");
-    setPhone("");
-    setEmail("");
-    setCity("");
-    setClientState("");
+  const openAdd = () => {
+    setEditing(null);
+    setDialogOpen(true);
+  };
+  const openEdit = (c: ClientWithProjectCount) => {
+    setEditing(c);
+    setDialogOpen(true);
   };
 
-  const handleAddClient = (e: FormEvent) => {
-    e.preventDefault();
-    const trimmedName = name.trim();
-    const trimmedPhone = phone.trim();
-    if (!trimmedName || !trimmedPhone) return;
-    createClient.mutate(
-      {
-        name: trimmedName,
-        phone: trimmedPhone,
-        email: email.trim() || undefined,
-        city: city.trim() || undefined,
-        state: clientState.trim() || undefined,
-      },
-      {
-        onSuccess: () => {
-          toast.success("Client added");
-          setAddClientOpen(false);
-          resetClientForm();
-        },
-        onError: (err) => {
-          toast.error(err instanceof Error ? err.message : "Failed to add client");
-        },
-      }
-    );
-  };
-
-  const clientsList = clients ?? [];
-
-  const filtered = clientsList.filter(
-    (c) =>
-      !search ||
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.phone.includes(search)
+  const clientsList = useMemo(() => clients ?? [], [clients]);
+  const filtered = useMemo(
+    () => clientsList.filter((c) => matchesClientSearch(c, search)),
+    [clientsList, search]
   );
 
   return (
@@ -105,102 +64,19 @@ function ClientsContent() {
             {clientsList.length} clients in your firm
           </p>
         </div>
-        <Button type="button" onClick={() => setAddClientOpen(true)}>
+        <Button type="button" onClick={openAdd}>
           <Plus className="mr-2 h-4 w-4" />
           Add Client
         </Button>
       </div>
 
-      <Dialog open={addClientOpen} onOpenChange={setAddClientOpen}>
-        <DialogContent className="sm:max-w-md">
-          <form onSubmit={handleAddClient}>
-            <DialogHeader>
-              <DialogTitle>Add client</DialogTitle>
-              <DialogDescription>Enter contact details for the new client.</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="client-name">Name</Label>
-                <Input
-                  id="client-name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  autoComplete="name"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="client-phone">Phone</Label>
-                <Input
-                  id="client-phone"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+91 10-digit mobile"
-                  required
-                  autoComplete="tel"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="client-email">Email</Label>
-                <Input
-                  id="client-email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  autoComplete="email"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="client-city">City</Label>
-                <Input
-                  id="client-city"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  placeholder="Hubbali"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="client-state">State</Label>
-                <Input
-                  id="client-state"
-                  value={clientState}
-                  onChange={(e) => setClientState(e.target.value)}
-                  placeholder="Karnataka"
-                  autoComplete="address-level1"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Used for GST: a different state from your firm means IGST instead of CGST + SGST.
-                </p>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setAddClientOpen(false)}
-                disabled={createClient.isPending}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={createClient.isPending}>
-                {createClient.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Adding…
-                  </>
-                ) : (
-                  "Submit"
-                )}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <ClientFormDialog open={dialogOpen} onOpenChange={setDialogOpen} client={editing} />
 
       <div className="relative sm:max-w-xs">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Search by name or phone..."
+          placeholder="Search by name, phone or email…"
+          aria-label="Search clients"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-9"
@@ -225,7 +101,20 @@ function ClientsContent() {
           {filtered.map((client) => {
             const projectCount = client._count.projects;
             return (
-              <Card key={client.id} className="cursor-pointer transition-colors hover:border-primary/30">
+              <Card
+                key={client.id}
+                role="button"
+                tabIndex={0}
+                aria-label={`Edit ${client.name}`}
+                onClick={() => openEdit(client)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    openEdit(client);
+                  }
+                }}
+                className="cursor-pointer transition-colors hover:border-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
                 <CardContent className="p-5">
                   <div className="flex items-start gap-3">
                     <Avatar className="h-10 w-10 shrink-0">
@@ -246,10 +135,18 @@ function ClientsContent() {
                             {client.email}
                           </div>
                         )}
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <MapPin className="h-3 w-3" />
-                          {client.city ?? ""}
-                        </div>
+                        {(client.city || client.state) && (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <MapPin className="h-3 w-3" />
+                            {[client.city, client.state].filter(Boolean).join(", ")}
+                          </div>
+                        )}
+                        {client.notes && (
+                          <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                            <StickyNote className="mt-0.5 h-3 w-3 shrink-0" />
+                            <span className="line-clamp-2">{client.notes}</span>
+                          </div>
+                        )}
                       </div>
                       <div className="mt-3">
                         <Badge variant="secondary" className="text-[10px]">

@@ -333,7 +333,7 @@ export default async function ClientPortalPage({ params }: { params: { token: st
           <ul className="mt-6 space-y-6">
             {siteUpdates.length === 0 && (
               <li className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
-                No site photos yet.
+                No site updates yet.
               </li>
             )}
             {siteUpdates.map((u) => (
@@ -358,7 +358,9 @@ export default async function ClientPortalPage({ params }: { params: { token: st
                         rel="noopener noreferrer"
                         className="relative aspect-[4/3] overflow-hidden rounded-lg bg-slate-200 ring-1 ring-slate-200"
                       >
-                        <Image src={url} alt="Site photo" fill className="object-cover" sizes="(max-width:768px) 50vw, 200px" />
+                        {/* Plain <img>: photos live on Vercel Blob, which next/image remotePatterns don't cover. */}
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={url} alt="Site photo" loading="lazy" className="h-full w-full object-cover" />
                       </a>
                     ))}
                   </div>

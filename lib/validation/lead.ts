@@ -3,6 +3,7 @@
  * Client-safe: imports nothing server-only.
  */
 import { z } from "zod";
+import { indianMobileSchema } from "./common";
 
 export const LEAD_STAGES = [
   "NEW",
@@ -95,29 +96,8 @@ export function leadSourceLabel(source: string): string {
   return LEAD_SOURCE_LABELS[source as (typeof LEAD_SOURCES)[number]] ?? source;
 }
 
-/**
- * Normalises an Indian mobile number to 10 digits: strips spaces, dashes,
- * brackets, a +91 / 91 country code and a leading trunk 0. Returns null when
- * the result isn't a valid mobile (10 digits starting 6–9).
- */
-export function normalizeIndianMobile(input: string): string | null {
-  let digits = input.replace(/\D/g, "");
-  if (digits.length === 12 && digits.startsWith("91")) digits = digits.slice(2);
-  else if (digits.length === 11 && digits.startsWith("0")) digits = digits.slice(1);
-  return /^[6-9]\d{9}$/.test(digits) ? digits : null;
-}
-
-const phoneSchema = z.string().transform((v, ctx) => {
-  const normalised = normalizeIndianMobile(v);
-  if (!normalised) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Enter a valid 10-digit Indian mobile number",
-    });
-    return z.NEVER;
-  }
-  return normalised;
-});
+export { normalizeIndianMobile } from "./common";
+const phoneSchema = indianMobileSchema;
 
 const optionalText = (max: number) =>
   z

@@ -2,6 +2,8 @@ import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { VendorCategory } from "@prisma/client";
+import { vendorCreateSchema } from "@/lib/validation/vendor";
+import { fieldErrors, firstIssueMessage } from "@/lib/validation/form-errors";
 
 const VENDOR_CATEGORIES = new Set(Object.values(VendorCategory));
 
@@ -43,31 +45,21 @@ export async function POST(request: NextRequest) {
     const user = await db.user.findUnique({ where: { clerkId: userId } });
     if (!user) return NextResponse.json({ data: null, error: "User not found" }, { status: 404 });
 
-    const body = await request.json();
-    const { name, category, phone, email, address, city, gst, notes, rating } = body;
-
-    if (!name || !category || !phone) {
-      return NextResponse.json({ data: null, error: "Name, category, and phone are required" }, { status: 400 });
+    const parsed = vendorCreateSchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) {
+      return NextResponse.json(
+        { data: null, error: firstIssueMessage(parsed.error), fieldErrors: fieldErrors(parsed.error) },
+        { status: 400 }
+      );
     }
-    if (!VENDOR_CATEGORIES.has(category)) {
-      return NextResponse.json({ data: null, error: "Invalid vendor category" }, { status: 400 });
-    }
-    if (rating !== undefined && rating !== null && (typeof rating !== "number" || rating < 1 || rating > 5)) {
-      return NextResponse.json({ data: null, error: "Rating must be between 1 and 5" }, { status: 400 });
-    }
+    // Vendor.city is non-nullable with a default: omit it when blank.
+    const { city, ...fields } = parsed.data;
 
     const vendor = await db.vendor.create({
       data: {
         firmId: user.firmId,
-        name,
-        category,
-        phone,
-        email,
-        address,
-        city,
-        gst,
-        notes,
-        rating,
+        ...fields,
+        ...(city ? { city } : {}),
       },
     });
 
