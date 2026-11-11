@@ -1,5 +1,6 @@
 import { UserRole } from "@prisma/client";
 import { db } from "@/lib/db";
+import { PLAN_HIERARCHY, type PlanTier } from "@/lib/feature-tiers";
 
 export type ProvisionUserInput = {
   clerkId: string;
@@ -19,6 +20,16 @@ export function displayName(firstName: string | null, lastName: string | null, e
 }
 
 /**
+ * Plan given to firms created at sign-up. Set SIGNUP_DEFAULT_PLAN=enterprise
+ * during the beta so testers get every feature; unset it to go back to "free".
+ * Only affects new firms — existing firms keep their plan.
+ */
+export function signupDefaultPlan(): PlanTier {
+  const value = process.env.SIGNUP_DEFAULT_PLAN?.trim().toLowerCase();
+  return PLAN_HIERARCHY.includes(value as PlanTier) ? (value as PlanTier) : "free";
+}
+
+/**
  * Creates the firm + OWNER user for a Clerk user if no DB row exists yet.
  * Shared by the Clerk webhook and the sign-in fallback in getAuthUser().
  */
@@ -32,7 +43,7 @@ export async function provisionUser(input: ProvisionUserInput) {
   try {
     return await db.$transaction(async (tx) => {
       const firm = await tx.firm.create({
-        data: { name: `${name}'s Firm`, email, phone: phone || "—" },
+        data: { name: `${name}'s Firm`, email, phone: phone || "—", plan: signupDefaultPlan() },
       });
 
       return tx.user.create({
