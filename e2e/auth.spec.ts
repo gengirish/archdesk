@@ -7,7 +7,6 @@ test.describe("Authentication", () => {
     await page.goto("/sign-in");
 
     await expect(page).toHaveURL(/\/sign-in/);
-    await page.waitForLoadState("networkidle");
     await expect(page.locator("input").first()).toBeVisible({
       timeout: 20_000,
     });
@@ -18,7 +17,6 @@ test.describe("Authentication", () => {
     await page.goto("/sign-up");
 
     await expect(page).toHaveURL(/\/sign-up/);
-    await page.waitForLoadState("networkidle");
     await expect(page.locator("input").first()).toBeVisible({
       timeout: 20_000,
     });
@@ -44,7 +42,6 @@ test.describe("Authentication", () => {
     await setupAuth(page);
     await page.goto("/sign-in");
 
-    await page.waitForLoadState("networkidle");
     await expect(page.locator("input").first()).toBeVisible({
       timeout: 20_000,
     });
