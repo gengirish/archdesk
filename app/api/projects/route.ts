@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
+import { generatePortalToken } from "@/lib/portal-token";
 import type { ApiResponse, ProjectWithRelations } from "@/types";
+import { firstIssue, projectCreateSchema } from "@/lib/validation/project";
 
 export async function GET(request: NextRequest): Promise<NextResponse<ApiResponse<ProjectWithRelations[]>>> {
   try {
@@ -52,12 +54,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
       return NextResponse.json({ data: null, error: "User not found" }, { status: 404 });
     }
 
-    const body = await request.json();
-    const { name, clientId, type, budget, area, location, startDate, deadline, description } = body;
-
-    if (!name || !clientId || !type) {
-      return NextResponse.json({ data: null, error: "Name, client, and type are required" }, { status: 400 });
+    const parsed = projectCreateSchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) {
+      return NextResponse.json({ data: null, error: firstIssue(parsed.error) }, { status: 400 });
     }
+    const { name, clientId, type, budget, area, location, startDate, deadline, description } =
+      parsed.data;
 
     const client = await db.client.findFirst({
       where: { id: clientId, firmId: user.firmId },
@@ -70,14 +72,15 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
       data: {
         firmId: user.firmId,
         clientId,
+        clientToken: generatePortalToken(),
         name,
         type,
         description,
         budget,
         area,
         location,
-        startDate: startDate ? new Date(startDate) : undefined,
-        deadline: deadline ? new Date(deadline) : undefined,
+        startDate,
+        deadline,
         team: {
           create: { userId: user.id, role: "Lead Architect" },
         },

@@ -1,14 +1,12 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import type { LeadActivity } from "@prisma/client";
+import type { Lead, User, ProjectWithRelations } from "@/types";
 import type {
-  Lead,
-  User,
-  CreateLeadInput,
-  LeadStage,
-  LeadSource,
-  ProjectType,
-  ProjectWithRelations,
-} from "@/types";
+  LeadActivityInput,
+  LeadCreateInput,
+  LeadStageValue,
+  LeadUpdateInput,
+} from "@/lib/validation/lead";
 import { clientKeys } from "./useClients";
 import { projectKeys } from "./useProjects";
 
@@ -19,29 +17,23 @@ export type LeadWithActivityLog = Lead & {
 };
 
 async function parseApiResponse<T>(res: Response): Promise<T> {
-  const json = (await res.json()) as ApiEnvelope<T>;
-  if (!res.ok || json.error) {
-    throw new Error(json.error ?? `Request failed (${res.status})`);
+  let json: ApiEnvelope<T> | null = null;
+  try {
+    json = (await res.json()) as ApiEnvelope<T>;
+  } catch {
+    /* non-JSON body */
+  }
+  if (!res.ok || !json || json.error) {
+    throw new Error(json?.error ?? `Request failed (${res.status})`);
   }
   if (json.data === null || json.data === undefined) {
-    throw new Error(json.error ?? "No data");
+    throw new Error("No data");
   }
   return json.data;
 }
 
-export type UpdateLeadInput = Partial<{
-  name: string;
-  phone: string;
-  email: string | null;
-  address: string | null;
-  projectType: ProjectType | null;
-  budget: number | null;
-  area: number | null;
-  source: LeadSource;
-  stage: LeadStage;
-  notes: string | null;
-  followUpAt: string | Date | null;
-}>;
+/** @deprecated use LeadUpdateInput from lib/validation/lead */
+export type UpdateLeadInput = LeadUpdateInput;
 
 // ── Query keys ────────────────────────────────────────────────
 export const leadKeys = {
@@ -49,6 +41,12 @@ export const leadKeys = {
   lists: () => [...leadKeys.all, "list"] as const,
   list: (filters: Record<string, unknown>) => [...leadKeys.lists(), filters] as const,
 };
+
+/** Lead changes feed the dashboard KPIs and analytics lead conversion. */
+function invalidateLeadDependents(queryClient: QueryClient) {
+  queryClient.invalidateQueries({ queryKey: leadKeys.lists() });
+  queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+}
 
 // ── Fetch leads ───────────────────────────────────────────────
 export function useLeads(stage?: string) {
@@ -70,13 +68,7 @@ export function useCreateLead() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (
-      input: CreateLeadInput & {
-        area?: number;
-        address?: string | null;
-        followUpAt?: string | Date | null;
-      }
-    ): Promise<LeadWithActivityLog> => {
+    mutationFn: async (input: LeadCreateInput): Promise<LeadWithActivityLog> => {
       const res = await fetch("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -84,13 +76,11 @@ export function useCreateLead() {
       });
       return parseApiResponse<LeadWithActivityLog>(res);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: leadKeys.lists() });
-    },
+    onSuccess: () => invalidateLeadDependents(queryClient),
   });
 }
 
-// ── Update lead ───────────────────────────────────────────────
+// ── Update lead (detail form) ─────────────────────────────────
 export function useUpdateLead() {
   const queryClient = useQueryClient();
 
@@ -98,7 +88,7 @@ export function useUpdateLead() {
     mutationFn: async ({
       id,
       ...body
-    }: UpdateLeadInput & { id: string }): Promise<LeadWithActivityLog> => {
+    }: LeadUpdateInput & { id: string }): Promise<LeadWithActivityLog> => {
       const res = await fetch(`/api/leads/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -106,9 +96,67 @@ export function useUpdateLead() {
       });
       return parseApiResponse<LeadWithActivityLog>(res);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: leadKeys.lists() });
+    onSuccess: () => invalidateLeadDependents(queryClient),
+  });
+}
+
+// ── Move lead to another stage (optimistic) ───────────────────
+type StageContext = { snapshots: [readonly unknown[], LeadWithActivityLog[] | undefined][] };
+
+export function useMoveLeadStage() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    LeadWithActivityLog,
+    Error,
+    { id: string; stage: LeadStageValue },
+    StageContext
+  >({
+    mutationFn: async ({ id, stage }) => {
+      const res = await fetch(`/api/leads/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stage }),
+      });
+      return parseApiResponse<LeadWithActivityLog>(res);
     },
+    onMutate: async ({ id, stage }) => {
+      await queryClient.cancelQueries({ queryKey: leadKeys.lists() });
+      const snapshots = queryClient.getQueriesData<LeadWithActivityLog[]>({
+        queryKey: leadKeys.lists(),
+      });
+      queryClient.setQueriesData<LeadWithActivityLog[]>({ queryKey: leadKeys.lists() }, (old) =>
+        old?.map((l) => (l.id === id ? { ...l, stage } : l))
+      );
+      return { snapshots };
+    },
+    onError: (_err, _vars, context) => {
+      context?.snapshots.forEach(([key, data]) => queryClient.setQueryData(key, data));
+    },
+    onSuccess: (updated) => {
+      // Swap in the server copy (it carries the new STAGE_CHANGE activity).
+      queryClient.setQueriesData<LeadWithActivityLog[]>({ queryKey: leadKeys.lists() }, (old) =>
+        old?.map((l) => (l.id === updated.id ? updated : l))
+      );
+    },
+    onSettled: () => invalidateLeadDependents(queryClient),
+  });
+}
+
+// ── Log an activity ───────────────────────────────────────────
+export function useAddLeadActivity() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...body }: LeadActivityInput & { id: string }) => {
+      const res = await fetch(`/api/leads/${id}/activities`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      return parseApiResponse<LeadActivity & { user: User | null }>(res);
+    },
+    onSuccess: () => invalidateLeadDependents(queryClient),
   });
 }
 
@@ -117,16 +165,16 @@ export function useConvertLead() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id: string): Promise<ProjectWithRelations> => {
+    mutationFn: async (id: string): Promise<ProjectWithRelations & { reusedClient?: boolean }> => {
       const res = await fetch(`/api/leads/${id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
-      return parseApiResponse<ProjectWithRelations>(res);
+      return parseApiResponse<ProjectWithRelations & { reusedClient?: boolean }>(res);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: leadKeys.lists() });
+      invalidateLeadDependents(queryClient);
       queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
       queryClient.invalidateQueries({ queryKey: clientKeys.lists() });
     },

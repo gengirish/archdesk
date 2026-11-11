@@ -49,6 +49,7 @@ function ClientsContent() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [city, setCity] = useState("");
+  const [clientState, setClientState] = useState("");
   const { data: clients, isLoading } = useClients();
   const createClient = useCreateClient();
 
@@ -57,6 +58,7 @@ function ClientsContent() {
     setPhone("");
     setEmail("");
     setCity("");
+    setClientState("");
   };
 
   const handleAddClient = (e: FormEvent) => {
@@ -70,6 +72,7 @@ function ClientsContent() {
         phone: trimmedPhone,
         email: email.trim() || undefined,
         city: city.trim() || undefined,
+        state: clientState.trim() || undefined,
       },
       {
         onSuccess: () => {
@@ -95,8 +98,8 @@ function ClientsContent() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-2xl font-medium tracking-tight">Clients</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {clientsList.length} clients in your firm
@@ -155,6 +158,19 @@ function ClientsContent() {
                   onChange={(e) => setCity(e.target.value)}
                   placeholder="Hubbali"
                 />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="client-state">State</Label>
+                <Input
+                  id="client-state"
+                  value={clientState}
+                  onChange={(e) => setClientState(e.target.value)}
+                  placeholder="Karnataka"
+                  autoComplete="address-level1"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Used for GST: a different state from your firm means IGST instead of CGST + SGST.
+                </p>
               </div>
             </div>
             <DialogFooter>

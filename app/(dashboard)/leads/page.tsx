@@ -1,77 +1,67 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useEffect, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
-import { Plus, Search, UserPlus, Phone, Loader2 } from "lucide-react";
-import { LeadSource, ProjectType } from "@prisma/client";
+import { Loader2, Plus, Search, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { formatINRShort } from "@/lib/utils";
-import type { LeadStage } from "@/types";
 import { FeatureGate } from "@/components/feature-gate";
 import { usePlan } from "@/hooks/usePlan";
-import { useLeads, useCreateLead } from "@/hooks/useLeads";
-
-const LEAD_SOURCES: LeadSource[] = [
-  LeadSource.REFERRAL,
-  LeadSource.INSTAGRAM,
-  LeadSource.FACEBOOK,
-  LeadSource.WALKIN,
-  LeadSource.WEBSITE,
-  LeadSource.HOUZZ,
-  LeadSource.PHONE,
-  LeadSource.OTHER,
-];
-
-const PROJECT_TYPES: ProjectType[] = [
-  ProjectType.RESIDENTIAL,
-  ProjectType.COMMERCIAL,
-  ProjectType.INDUSTRIAL,
-  ProjectType.INTERIOR,
-  ProjectType.LANDSCAPE,
-  ProjectType.INSTITUTIONAL,
-];
-
-function formatEnumLabel(val: string) {
-  return val.charAt(0) + val.slice(1).toLowerCase().replace(/_/g, " ");
-}
-
-const stageConfig: Record<LeadStage, { label: string; color: string }> = {
-  NEW: { label: "New", color: "#8891A8" },
-  CONTACTED: { label: "Contacted", color: "#4A8EFF" },
-  SITE_VISIT: { label: "Site Visit", color: "#9B72FF" },
-  PROPOSAL_SENT: { label: "Proposal Sent", color: "#E8A045" },
-  NEGOTIATION: { label: "Negotiation", color: "#FF8A4A" },
-  WON: { label: "Won", color: "#3DD68C" },
-  LOST: { label: "Lost", color: "#F25757" },
-};
-
-const pipelineStages: LeadStage[] = ["NEW", "CONTACTED", "SITE_VISIT", "PROPOSAL_SENT", "NEGOTIATION"];
+import {
+  useCreateLead,
+  useLeads,
+  useMoveLeadStage,
+  type LeadWithActivityLog,
+} from "@/hooks/useLeads";
+import {
+  firstLeadIssue,
+  leadCreateSchema,
+  leadStageLabel,
+  pipelineValue,
+  type LeadStageValue,
+} from "@/lib/validation/lead";
+import { LeadBoard } from "@/components/leads/LeadBoard";
+import { LeadDetailSheet } from "@/components/leads/LeadDetailSheet";
+import {
+  EMPTY_LEAD_FORM,
+  LeadFormFields,
+  type LeadFormState,
+} from "@/components/leads/LeadFormFields";
+import { LEAD_STAGE_COLORS, projectTypeLabel } from "@/components/leads/lead-helpers";
 
 export default function LeadsPage() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>}>
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      }
+    >
       <LeadsContent />
     </Suspense>
   );
+}
+
+/** Matches name, or phone by digits so "+91 98765" and "98765 43210" both work. */
+function matchesSearch(lead: LeadWithActivityLog, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  if (lead.name.toLowerCase().includes(q)) return true;
+  let digits = q.replace(/\D/g, "");
+  if (digits.startsWith("91") && digits.length > 10) digits = digits.slice(2);
+  return digits.length >= 3 && lead.phone.replace(/\D/g, "").includes(digits);
 }
 
 function LeadsContent() {
@@ -82,66 +72,52 @@ function LeadsContent() {
     const q = searchParams.get("q");
     if (q) setSearch(q);
   }, [searchParams]);
+
   const [addLeadOpen, setAddLeadOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [source, setSource] = useState<LeadSource>(LEAD_SOURCES[0]);
-  const [projectType, setProjectType] = useState("");
-  const [budget, setBudget] = useState("");
-  const { data: leads, isLoading } = useLeads();
+  const [form, setForm] = useState<LeadFormState>(EMPTY_LEAD_FORM);
+  const [openLeadId, setOpenLeadId] = useState<string | null>(null);
+
+  const { data: leads, isLoading, error } = useLeads();
   const createLead = useCreateLead();
+  const moveStage = useMoveLeadStage();
 
-  function resetLeadForm() {
-    setName("");
-    setPhone("");
-    setEmail("");
-    setSource(LEAD_SOURCES[0]);
-    setProjectType("");
-    setBudget("");
-  }
+  const allLeads = leads ?? [];
+  const filtered = allLeads.filter((l) => matchesSearch(l, search));
+  // Read the open lead from live query data so the sheet reflects optimistic moves.
+  const openLead = openLeadId ? allLeads.find((l) => l.id === openLeadId) ?? null : null;
 
-  function handleSubmitLead() {
-    const trimmedName = name.trim();
-    const trimmedPhone = phone.trim();
-    if (!trimmedName || !trimmedPhone) {
-      toast.error("Name and phone are required");
+  function handleSubmitLead(e: FormEvent) {
+    e.preventDefault();
+    const check = leadCreateSchema.safeParse(form);
+    if (!check.success) {
+      toast.error(firstLeadIssue(check.error));
       return;
     }
-    let budgetNum: number | undefined;
-    if (budget.trim()) {
-      const n = Number(budget.replace(/,/g, ""));
-      if (Number.isNaN(n) || n < 0) {
-        toast.error("Enter a valid budget");
-        return;
-      }
-      budgetNum = n;
-    }
-    createLead.mutate(
-      {
-        name: trimmedName,
-        phone: trimmedPhone,
-        source,
-        ...(email.trim() ? { email: email.trim() } : {}),
-        ...(projectType ? { projectType: projectType as ProjectType } : {}),
-        ...(budgetNum !== undefined ? { budget: budgetNum } : {}),
+    createLead.mutate(form, {
+      onSuccess: () => {
+        toast.success("Lead created");
+        setAddLeadOpen(false);
+        setForm(EMPTY_LEAD_FORM);
       },
+      onError: (err) => toast.error(err instanceof Error ? err.message : "Failed to create lead"),
+    });
+  }
+
+  function handleMoveStage(lead: LeadWithActivityLog, stage: LeadStageValue) {
+    if (lead.stage === stage) return;
+    const from = lead.stage;
+    moveStage.mutate(
+      { id: lead.id, stage },
       {
-        onSuccess: () => {
-          toast.success("Lead created");
-          setAddLeadOpen(false);
-          resetLeadForm();
-        },
-        onError: (err) => {
-          toast.error(err instanceof Error ? err.message : "Failed to create lead");
-        },
+        onSuccess: () =>
+          toast.success(`${lead.name}: ${leadStageLabel(from)} → ${leadStageLabel(stage)}`),
+        onError: (err) =>
+          toast.error(
+            `Couldn't move ${lead.name}: ${err instanceof Error ? err.message : "please try again"}`
+          ),
       }
     );
   }
-
-  const filtered = (leads ?? []).filter(
-    (l) => !search || l.name.toLowerCase().includes(search.toLowerCase())
-  );
 
   if (isLoading) {
     return (
@@ -151,220 +127,161 @@ function LeadsContent() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <p className="text-sm text-destructive">
+          {error instanceof Error ? error.message : "Failed to load leads"}
+        </p>
+      </div>
+    );
+  }
+
+  const activeCount = allLeads.filter((l) => l.stage !== "WON" && l.stage !== "LOST").length;
+
   return (
     <FeatureGate feature="leads_crm" plan={plan}>
       <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-medium tracking-tight">Leads</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {(leads ?? []).length} leads &middot; Pipeline value:{" "}
-            {formatINRShort(
-              (leads ?? [])
-                .filter((l) => !["WON", "LOST"].includes(l.stage))
-                .reduce((s, l) => s + (l.budget || 0), 0)
-            )}
-          </p>
-        </div>
-        <Button onClick={() => setAddLeadOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Lead
-        </Button>
-      </div>
-
-      <Dialog open={addLeadOpen} onOpenChange={setAddLeadOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add lead</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-2">
-            <div className="grid gap-2">
-              <Label htmlFor="lead-name">Name</Label>
-              <Input
-                id="lead-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Client name"
-                required
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="lead-phone">Phone</Label>
-              <Input
-                id="lead-phone"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="Phone number"
-                required
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="lead-source">Source</Label>
-              <Select value={source} onValueChange={(v) => setSource(v as LeadSource)}>
-                <SelectTrigger id="lead-source">
-                  <SelectValue placeholder="Source" />
-                </SelectTrigger>
-                <SelectContent>
-                  {LEAD_SOURCES.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {formatEnumLabel(s)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="lead-project-type">Project type</Label>
-              <Select
-                value={projectType || "__none__"}
-                onValueChange={(v) => setProjectType(v === "__none__" ? "" : v)}
-              >
-                <SelectTrigger id="lead-project-type">
-                  <SelectValue placeholder="Optional" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">None</SelectItem>
-                  {PROJECT_TYPES.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {formatEnumLabel(t)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="lead-budget">Budget (INR)</Label>
-              <Input
-                id="lead-budget"
-                type="text"
-                inputMode="decimal"
-                value={budget}
-                onChange={(e) => setBudget(e.target.value)}
-                placeholder="Optional"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="lead-email">Email</Label>
-              <Input
-                id="lead-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Optional"
-              />
-            </div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-medium tracking-tight">Leads</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {activeCount} active of {allLeads.length} &middot; Pipeline value:{" "}
+              {formatINRShort(pipelineValue(allLeads))}
+            </p>
           </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setAddLeadOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="button" onClick={handleSubmitLead} disabled={createLead.isPending}>
-              {createLead.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                "Submit"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          <Button onClick={() => setAddLeadOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Lead
+          </Button>
+        </div>
 
-      <div className="relative sm:max-w-xs">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Search leads..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
-        />
-      </div>
+        <div className="relative sm:max-w-xs">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search by name or phone…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+            aria-label="Search leads"
+          />
+        </div>
 
-      {/* Kanban pipeline */}
-      <div className="flex gap-4 overflow-x-auto pb-4">
-        {pipelineStages.map((stage) => {
-          const leads = filtered.filter((l) => l.stage === stage);
-          const config = stageConfig[stage];
-          return (
-            <div key={stage} className="w-64 shrink-0">
-              <div className="mb-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full" style={{ backgroundColor: config.color }} />
-                  <span className="text-xs font-medium">{config.label}</span>
-                </div>
-                <Badge variant="secondary" className="text-[10px]">{leads.length}</Badge>
+        {allLeads.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
+              <UserPlus className="h-10 w-10 text-muted-foreground/60" />
+              <div>
+                <p className="font-medium">No leads yet</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Add enquiries from referrals, Instagram or walk-ins and track them to a signed project.
+                </p>
               </div>
-              <div className="space-y-2">
-                {leads.map((lead) => (
-                  <Card key={lead.id} className="cursor-pointer transition-colors hover:border-primary/30">
-                    <CardContent className="p-3">
-                      <div className="text-sm font-medium">{lead.name}</div>
-                      <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                        <Phone className="h-3 w-3" />
-                        +91 {lead.phone}
-                      </div>
-                      <div className="mt-2 flex items-center justify-between">
-                        <Badge variant="outline" className="text-[10px]">
-                          {lead.projectType?.charAt(0)}{lead.projectType?.slice(1).toLowerCase()}
-                        </Badge>
-                        {lead.budget && (
-                          <span className="text-xs font-medium text-muted-foreground">
-                            {formatINRShort(lead.budget)}
-                          </span>
-                        )}
-                      </div>
-                      <div className="mt-1.5 text-[10px] text-muted-foreground/70">
-                        via {lead.source.charAt(0) + lead.source.slice(1).toLowerCase()}
-                      </div>
+              <Button size="sm" onClick={() => setAddLeadOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add your first lead
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            <p className="text-xs text-muted-foreground">
+              Drag a card by its handle, or use the stage menu on each card.
+            </p>
+            <LeadBoard
+              leads={filtered}
+              onOpen={(l) => setOpenLeadId(l.id)}
+              onMoveStage={handleMoveStage}
+            />
+
+            <div className="grid gap-6 lg:grid-cols-2">
+              {(["WON", "LOST"] as const).map((stage) => {
+                const stageLeads = filtered.filter((l) => l.stage === stage);
+                return (
+                  <Card key={stage}>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center gap-2 text-base font-medium">
+                        <span
+                          className="h-2 w-2 rounded-full"
+                          style={{ backgroundColor: LEAD_STAGE_COLORS[stage] }}
+                        />
+                        {leadStageLabel(stage)} ({stageLeads.length})
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {stageLeads.length === 0 ? (
+                        <p className="text-xs text-muted-foreground">
+                          No {leadStageLabel(stage).toLowerCase()} leads yet
+                        </p>
+                      ) : (
+                        <ul className="space-y-1">
+                          {stageLeads.map((lead) => (
+                            <li key={lead.id} className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setOpenLeadId(lead.id)}
+                                className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-md px-3 py-2 text-left hover:bg-secondary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              >
+                                <span className="min-w-0">
+                                  <span className="block truncate text-sm font-medium">{lead.name}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {projectTypeLabel(lead.projectType) || "—"}
+                                    {lead.convertedProjectId ? " · converted" : ""}
+                                  </span>
+                                </span>
+                                <span className="shrink-0 text-xs font-medium">
+                                  {formatINRShort(lead.budget ?? 0)}
+                                </span>
+                              </button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 shrink-0 text-xs"
+                                onClick={() => handleMoveStage(lead, "NEGOTIATION")}
+                                aria-label={`Reopen ${lead.name}`}
+                              >
+                                Reopen
+                              </Button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </CardContent>
                   </Card>
-                ))}
-                {leads.length === 0 && (
-                  <div className="rounded-lg border border-dashed border-border/40 py-8 text-center">
-                    <p className="text-xs text-muted-foreground/50">No leads</p>
-                  </div>
-                )}
-              </div>
+                );
+              })}
             </div>
-          );
-        })}
-      </div>
+          </>
+        )}
 
-      {/* Won & Lost */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {(["WON", "LOST"] as LeadStage[]).map((stage) => {
-          const leads = filtered.filter((l) => l.stage === stage);
-          const config = stageConfig[stage];
-          return (
-            <Card key={stage}>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base font-medium">
-                  <div className="h-2 w-2 rounded-full" style={{ backgroundColor: config.color }} />
-                  {config.label} ({leads.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {leads.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">No {config.label.toLowerCase()} leads yet</p>
-                ) : (
-                  <div className="space-y-2">
-                    {leads.map((lead) => (
-                      <div key={lead.id} className="flex items-center justify-between rounded-md px-3 py-2 hover:bg-secondary/30">
-                        <div>
-                          <div className="text-sm font-medium">{lead.name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {lead.projectType?.charAt(0)}{lead.projectType?.slice(1).toLowerCase()}
-                          </div>
-                        </div>
-                        <span className="text-xs font-medium">{formatINRShort(lead.budget || 0)}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+        <Dialog open={addLeadOpen} onOpenChange={setAddLeadOpen}>
+          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Add lead</DialogTitle>
+              <DialogDescription>New enquiries start in the “New” column.</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleSubmitLead} className="space-y-4">
+              <LeadFormFields idPrefix="lead-new" value={form} onChange={setForm} />
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button type="button" variant="outline" onClick={() => setAddLeadOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={createLead.isPending}>
+                  {createLead.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Create lead
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        <LeadDetailSheet
+          lead={openLead}
+          onOpenChange={(open) => {
+            if (!open) setOpenLeadId(null);
+          }}
+          onMoveStage={handleMoveStage}
+        />
       </div>
     </FeatureGate>
   );

@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { ActivityType, ClientDecisionOutcome, InvoiceStatus, LeadStage, MilestoneStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getFirmBillingSummary } from "@/lib/billing-metrics-server";
 import { classifyDecisionSla } from "@/lib/decision-sla";
 import { calculateGST } from "@/lib/utils";
 
@@ -34,6 +35,7 @@ function activityTypeLabel(t: ActivityType): string {
     SITE_VISIT: "Site visit",
     PROPOSAL: "Proposal",
     NOTE: "Note",
+    MEETING: "Meeting",
     STAGE_CHANGE: "Stage change",
   };
   return map[t] ?? t;
@@ -73,9 +75,7 @@ export async function GET() {
       lostCount,
       totalLeads,
       projectsForClients,
-      totalReceivedAgg,
-      totalPendingAgg,
-      totalOverdueAgg,
+      billing,
       dueSoonMilestones,
       siteUpdates,
       leadActivities,
@@ -122,32 +122,7 @@ export async function GET() {
           client: { select: { name: true } },
         },
       }),
-      db.milestone.aggregate({
-        where: { project: { firmId }, status: MilestoneStatus.PAID },
-        _sum: { paidAmount: true },
-      }),
-      db.invoice.aggregate({
-        where: {
-          milestone: { project: { firmId } },
-          status: {
-            in: [InvoiceStatus.UNPAID, InvoiceStatus.OVERDUE, InvoiceStatus.DRAFT],
-          },
-        },
-        _sum: { totalAmount: true },
-      }),
-      db.invoice.aggregate({
-        where: {
-          milestone: { project: { firmId } },
-          OR: [
-            { status: InvoiceStatus.OVERDUE },
-            {
-              status: InvoiceStatus.UNPAID,
-              milestone: { dueDate: { lt: now } },
-            },
-          ],
-        },
-        _sum: { totalAmount: true },
-      }),
+      getFirmBillingSummary(firmId),
       db.milestone.findMany({
         where: {
           project: { firmId },
@@ -332,6 +307,29 @@ export async function GET() {
       });
     }
 
+    const recentNudges = await db.clientNudge.findMany({
+      where: { project: { firmId } },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      select: {
+        status: true,
+        channel: true,
+        createdAt: true,
+        milestone: { select: { name: true } },
+        project: { select: { name: true } },
+      },
+    });
+    for (const n of recentNudges) {
+      activityRows.push({
+        type: "client_nudge",
+        description:
+          n.status === "FAILED"
+            ? `Nudge failed for ${n.milestone.name} (${n.project.name})`
+            : `Client nudged by ${n.channel === "EMAIL" ? "email" : "WhatsApp"} for ${n.milestone.name} (${n.project.name})`,
+        date: n.createdAt,
+      });
+    }
+
     activityRows.sort((a, b) => b.date.getTime() - a.date.getTime());
     const recentActivity = activityRows.slice(0, 10).map((a) => ({
       type: a.type,
@@ -449,9 +447,12 @@ export async function GET() {
         },
         topClients,
         cashFlow: {
-          totalReceived: Math.round(totalReceivedAgg._sum.paidAmount ?? 0),
-          totalPending: Math.round(totalPendingAgg._sum.totalAmount ?? 0),
-          totalOverdue: Math.round(totalOverdueAgg._sum.totalAmount ?? 0),
+          // Shared definitions (lib/billing-metrics.ts): amounts include GST.
+          totalReceived: billing.collected,
+          totalPending: billing.outstanding,
+          totalOverdue: billing.overdue,
+          totalBilled: billing.billed,
+          collectionRate: billing.collectionRate,
           projectedNextMonth,
         },
         decisionInsights: {

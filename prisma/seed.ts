@@ -15,6 +15,7 @@ import {
   IssueSeverity,
   IssueStatus,
 } from "@prisma/client";
+import { generatePortalToken } from "../lib/portal-token";
 
 const prisma = new PrismaClient();
 
@@ -224,7 +225,7 @@ async function main() {
   const projects = await Promise.all([
     prisma.project.create({
       data: {
-        firmId: firm.id, clientId: c0.id,
+        firmId: firm.id, clientId: c0.id, clientToken: generatePortalToken(),
         name: "Kulkarni Residence — Gokul Road",
         description: "G+1 independent house with courtyard and car parking.",
         type: ProjectType.RESIDENTIAL, stage: ProjectStage.WORKING_DRAWINGS, status: ProjectStatus.ACTIVE,
@@ -234,7 +235,7 @@ async function main() {
     }),
     prisma.project.create({
       data: {
-        firmId: firm.id, clientId: c1.id,
+        firmId: firm.id, clientId: c1.id, clientToken: generatePortalToken(),
         name: "Hegde Villa — Vidyanagar",
         description: "Premium G+2 villa with terrace garden and rainwater harvesting.",
         type: ProjectType.RESIDENTIAL, stage: ProjectStage.DESIGN_DEV, status: ProjectStatus.ACTIVE,
@@ -244,7 +245,7 @@ async function main() {
     }),
     prisma.project.create({
       data: {
-        firmId: firm.id, clientId: c2.id,
+        firmId: firm.id, clientId: c2.id, clientToken: generatePortalToken(),
         name: "Patil Farmhouse — Unkal",
         description: "Weekend retreat with pool, landscaped gardens, and open-to-sky bathrooms.",
         type: ProjectType.RESIDENTIAL, stage: ProjectStage.EXECUTION, status: ProjectStatus.ACTIVE,
@@ -254,7 +255,7 @@ async function main() {
     }),
     prisma.project.create({
       data: {
-        firmId: firm.id, clientId: c3.id,
+        firmId: firm.id, clientId: c3.id, clientToken: generatePortalToken(),
         name: "Bhat Dental Clinic — Keshwapur",
         description: "Modern dental clinic with 4 operatories, X-ray room, and patient lounge.",
         type: ProjectType.COMMERCIAL, stage: ProjectStage.SCHEMATIC, status: ProjectStatus.ACTIVE,
@@ -264,7 +265,7 @@ async function main() {
     }),
     prisma.project.create({
       data: {
-        firmId: firm.id, clientId: c4.id,
+        firmId: firm.id, clientId: c4.id, clientToken: generatePortalToken(),
         name: "Nadiger Retail Showroom — Dharwad",
         description: "2-storey electronics showroom with mezzanine display and service centre.",
         type: ProjectType.COMMERCIAL, stage: ProjectStage.EXECUTION, status: ProjectStatus.ACTIVE,
@@ -274,7 +275,7 @@ async function main() {
     }),
     prisma.project.create({
       data: {
-        firmId: firm.id, clientId: c5.id,
+        firmId: firm.id, clientId: c5.id, clientToken: generatePortalToken(),
         name: "Joshi Apartment Interiors — Navanagar",
         description: "Full 3BHK interior fit-out: false ceiling, modular kitchen, wardrobes, bathroom renovation.",
         type: ProjectType.INTERIOR, stage: ProjectStage.EXECUTION, status: ProjectStatus.ACTIVE,
@@ -284,7 +285,7 @@ async function main() {
     }),
     prisma.project.create({
       data: {
-        firmId: firm.id, clientId: c0.id,
+        firmId: firm.id, clientId: c0.id, clientToken: generatePortalToken(),
         name: "Vidya Niketan School Extension",
         description: "New classroom block + library wing for 400 additional students.",
         type: ProjectType.INSTITUTIONAL, stage: ProjectStage.SCHEMATIC, status: ProjectStatus.ACTIVE,
@@ -294,7 +295,7 @@ async function main() {
     }),
     prisma.project.create({
       data: {
-        firmId: firm.id, clientId: c1.id,
+        firmId: firm.id, clientId: c1.id, clientToken: generatePortalToken(),
         name: "Hegde Garden & Driveway — Vidyanagar",
         description: "Landscape design with native plantings, paver driveway, and garden lighting.",
         type: ProjectType.LANDSCAPE, stage: ProjectStage.COMPLETED, status: ProjectStatus.COMPLETED,
@@ -304,7 +305,7 @@ async function main() {
     }),
     prisma.project.create({
       data: {
-        firmId: firm.id, clientId: c6.id,
+        firmId: firm.id, clientId: c6.id, clientToken: generatePortalToken(),
         name: "Hosamani Warehouse — Industrial Area",
         description: "Pre-engineered steel warehouse with loading dock and office block.",
         type: ProjectType.INDUSTRIAL, stage: ProjectStage.CONCEPT, status: ProjectStatus.ACTIVE,
@@ -314,7 +315,7 @@ async function main() {
     }),
     prisma.project.create({
       data: {
-        firmId: firm.id, clientId: c7.id,
+        firmId: firm.id, clientId: c7.id, clientToken: generatePortalToken(),
         name: "Desai Row Houses — Phase 1",
         description: "6-unit row house development, stilt + 2 floors, individual parking.",
         type: ProjectType.RESIDENTIAL, stage: ProjectStage.CONCEPT, status: ProjectStatus.ON_HOLD,
@@ -431,7 +432,7 @@ async function main() {
     const amounts = gst(ms.amount, ms.gstPercent);
     await prisma.invoice.create({
       data: {
-        milestoneId: ms.id, invoiceNo: spec.no,
+        firmId: firm.id, milestoneId: ms.id, invoiceNo: spec.no,
         ...amounts, status: spec.status,
         paidAt: "paidAt" in spec ? (spec as { paidAt: Date }).paidAt : undefined,
         notes: "notes" in spec ? (spec as { notes: string }).notes : undefined,

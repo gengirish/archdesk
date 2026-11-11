@@ -1,7 +1,8 @@
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
-import { InvoiceStatus, LeadStage, MilestoneStatus, ProjectStatus } from "@prisma/client";
+import { InvoiceStatus, LeadStage, ProjectStatus } from "@prisma/client";
+import { getFirmBillingSummary } from "@/lib/billing-metrics-server";
 
 export async function GET() {
   try {
@@ -16,8 +17,7 @@ export async function GET() {
     const [
       activeProjects,
       completedProjects,
-      paidRevenueAgg,
-      pendingRevenueAgg,
+      billing,
       totalClients,
       totalLeads,
       overdueInvoices,
@@ -29,14 +29,7 @@ export async function GET() {
       db.project.count({
         where: { firmId, status: ProjectStatus.COMPLETED },
       }),
-      db.milestone.aggregate({
-        where: { project: { firmId }, status: MilestoneStatus.PAID },
-        _sum: { paidAmount: true },
-      }),
-      db.milestone.aggregate({
-        where: { project: { firmId }, status: { not: MilestoneStatus.PAID } },
-        _sum: { amount: true },
-      }),
+      getFirmBillingSummary(firmId),
       db.client.count({ where: { firmId } }),
       db.lead.count({
         where: { firmId, stage: { notIn: [LeadStage.WON, LeadStage.LOST] } },
@@ -61,8 +54,9 @@ export async function GET() {
       }),
     ]);
 
-    const totalRevenue = paidRevenueAgg._sum.paidAmount ?? 0;
-    const pendingRevenue = pendingRevenueAgg._sum.amount ?? 0;
+    // Shared definitions (lib/billing-metrics.ts): amounts include GST.
+    const totalRevenue = billing.collected;
+    const pendingRevenue = billing.outstanding;
 
     return NextResponse.json({
       data: {
@@ -74,6 +68,7 @@ export async function GET() {
         totalLeads,
         overdueInvoices,
         recentProjects,
+        billing,
       },
       error: null,
     });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { isPlausiblePortalToken } from "@/lib/portal-token";
 import { ClientDecisionOutcome } from "@prisma/client";
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
@@ -82,7 +83,7 @@ export async function GET(
 ) {
   try {
     const token = params.token?.trim();
-    if (!token) {
+    if (!token || !isPlausiblePortalToken(token)) {
       return NextResponse.json({ data: null, error: "Not found" }, { status: 404 });
     }
 
@@ -145,7 +146,7 @@ export async function POST(
 ) {
   try {
     const token = params.token?.trim();
-    if (!token) {
+    if (!token || !isPlausiblePortalToken(token)) {
       return NextResponse.json({ data: null, error: "Not found" }, { status: 404 });
     }
     const retryAfterSeconds = enforcePostRateLimit(request, token);

@@ -38,9 +38,26 @@ function textHash(value: string): string {
   return hash.toString(16);
 }
 
-function buildEmailHtml(payload: ClientNudgePayload): string {
-  const note = payload.customMessage?.trim()
-    ? `<p style="margin:0 0 16px 0;color:#334155;">${payload.customMessage.trim()}</p>`
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function buildEmailHtml(raw: ClientNudgePayload): string {
+  // Names and messages are user-entered: escape before putting them in HTML.
+  const payload = {
+    ...raw,
+    clientName: escapeHtml(raw.clientName),
+    projectName: escapeHtml(raw.projectName),
+    milestoneName: escapeHtml(raw.milestoneName),
+    portalUrl: escapeHtml(raw.portalUrl),
+  };
+  const note = raw.customMessage?.trim()
+    ? `<p style="margin:0 0 16px 0;color:#334155;">${escapeHtml(raw.customMessage.trim())}</p>`
     : "";
 
   return [
@@ -100,6 +117,7 @@ export async function deliverClientNudge(
   const messageHash = textHash(payload.customMessage?.trim() || "");
   const idempotencyKey = `client-nudge/${idempotencySeed}/email/${messageHash}`;
 
+  // resend@3.5 has no idempotency option; the route's 12h cooldown prevents double sends.
   const { data, error } = await resend.emails.send({
     from,
     to: [payload.clientEmail],

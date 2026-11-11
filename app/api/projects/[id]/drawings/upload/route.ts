@@ -2,16 +2,8 @@ import { auth } from "@clerk/nextjs/server";
 import { DrawingType } from "@prisma/client";
 import { db } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
-import {
-  sanitizeDrawingStorageFileName,
-  validateDrawingUploadFile,
-} from "@/lib/drawing-upload";
-import {
-  BUCKETS,
-  deleteFileAdmin,
-  getPublicUrl,
-  uploadBufferAdmin,
-} from "@/lib/supabase";
+import { DRAWING_DETAIL_INCLUDE, storeDrawingFile } from "@/lib/drawing-storage";
+import { newRequestId, removeStoredFile } from "@/lib/storage";
 
 const DRAWING_TYPES = new Set(Object.values(DrawingType));
 const LOG_TAG = "[API_PROJECT_DRAWINGS_UPLOAD_POST]";
@@ -20,6 +12,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const requestId = newRequestId();
   try {
     const { userId } = await auth();
     if (!userId) {
@@ -33,24 +26,17 @@ export async function POST(
 
     const project = await db.project.findFirst({
       where: { id: params.id, firmId: user.firmId },
+      select: { id: true },
     });
     if (!project) {
       return NextResponse.json({ data: null, error: "Project not found" }, { status: 404 });
-    }
-
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      console.error(LOG_TAG, "Supabase URL or service role key is missing");
-      return NextResponse.json(
-        { data: null, error: "File storage is not configured" },
-        { status: 503 }
-      );
     }
 
     let formData: FormData;
     try {
       formData = await request.formData();
     } catch (parseErr) {
-      console.error(LOG_TAG, "multipart parse failed", parseErr);
+      console.error(LOG_TAG, `requestId=${requestId}`, "multipart parse failed", parseErr);
       return NextResponse.json(
         { data: null, error: "Invalid multipart form data" },
         { status: 400 }
@@ -72,85 +58,53 @@ export async function POST(
       );
     }
 
-    const fileEntry = fileField instanceof File ? fileField : null;
-    const validated = validateDrawingUploadFile(fileEntry);
-    if (!validated.ok) {
-      return NextResponse.json(
-        { data: null, error: validated.error },
-        { status: validated.status }
-      );
-    }
+    const stored = await storeDrawingFile({
+      file: fileField instanceof File ? fileField : null,
+      firmId: user.firmId,
+      projectId: params.id,
+      logTag: LOG_TAG,
+      requestId,
+    });
+    if (!stored.ok) return stored.response;
 
-    const uploadFile = validated.file;
-
-    let versionNote: string | null = null;
-    if (typeof versionNoteRaw === "string") {
-      const t = versionNoteRaw.trim();
-      if (t.length > 0) {
-        versionNote = t.slice(0, 2000);
-      }
-    }
-
-    const storageName = sanitizeDrawingStorageFileName(uploadFile.name);
-    const storagePath = `${user.firmId}/${params.id}/${Date.now()}-${storageName}`;
-
-    try {
-      await uploadBufferAdmin(
-        BUCKETS.DRAWINGS,
-        storagePath,
-        uploadFile,
-        validated.contentType
-      );
-    } catch (storageErr) {
-      console.error(LOG_TAG, "Supabase storage upload failed", storageErr);
-      return NextResponse.json(
-        { data: null, error: "Failed to store file" },
-        { status: 502 }
-      );
-    }
-
-    const fileUrl = getPublicUrl(BUCKETS.DRAWINGS, storagePath);
+    const versionNote =
+      typeof versionNoteRaw === "string" && versionNoteRaw.trim()
+        ? versionNoteRaw.trim().slice(0, 2000)
+        : null;
 
     try {
       const drawing = await db.drawing.create({
         data: {
           projectId: params.id,
-          name: nameRaw.trim(),
+          name: nameRaw.trim().slice(0, 200),
           type: typeRaw as DrawingType,
-          fileUrl,
-          fileSize: uploadFile.size,
-          mimeType: validated.contentType,
+          fileUrl: stored.url,
+          fileSize: stored.size,
+          mimeType: stored.contentType,
           uploadedById: user.id,
           versions: {
-            create: {
-              version: 1,
-              fileUrl,
-              fileSize: uploadFile.size,
-              note: versionNote,
-            },
+            create: { version: 1, fileUrl: stored.url, fileSize: stored.size, note: versionNote },
           },
         },
-        include: {
-          versions: { orderBy: { version: "desc" } },
-          comments: { orderBy: { createdAt: "desc" }, include: { user: true } },
-        },
+        include: DRAWING_DETAIL_INCLUDE,
       });
 
       return NextResponse.json({ data: drawing, error: null }, { status: 201 });
     } catch (dbErr) {
-      console.error(LOG_TAG, "database error after storage upload", dbErr);
-      try {
-        await deleteFileAdmin(BUCKETS.DRAWINGS, storagePath);
-      } catch (delErr) {
-        console.error(LOG_TAG, "failed to remove orphan storage object", delErr);
-      }
+      console.error(LOG_TAG, `requestId=${requestId}`, "database error after storage upload", dbErr);
+      await removeStoredFile(stored.url).catch((delErr) =>
+        console.error(LOG_TAG, `requestId=${requestId}`, "failed to remove orphan blob", delErr)
+      );
       return NextResponse.json(
-        { data: null, error: "Failed to save drawing metadata" },
+        { data: null, error: `Failed to save drawing (ref ${requestId})` },
         { status: 500 }
       );
     }
   } catch (error) {
-    console.error(LOG_TAG, "unhandled error", error);
-    return NextResponse.json({ data: null, error: "Internal server error" }, { status: 500 });
+    console.error(LOG_TAG, `requestId=${requestId}`, "unhandled error", error);
+    return NextResponse.json(
+      { data: null, error: `Internal server error (ref ${requestId})` },
+      { status: 500 }
+    );
   }
 }

@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     if (!user) return NextResponse.json({ data: null, error: "User not found" }, { status: 404 });
 
     const body = await request.json();
-    const { name, phone, email, address, city, notes } = body;
+    const { name, phone, email, address, city, state, notes } = body;
 
     if (!name || !phone) {
       return NextResponse.json({ data: null, error: "Name and phone are required" }, { status: 400 });
@@ -57,6 +57,7 @@ export async function POST(request: NextRequest) {
         email,
         address,
         city,
+        state: typeof state === "string" && state.trim() ? state.trim().slice(0, 60) : undefined,
         notes,
       },
       include: { _count: { select: { projects: true } } },

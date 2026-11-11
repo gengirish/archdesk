@@ -5,6 +5,7 @@ required_docs:
 
 related_docs:
   - docs/DEMO.md: stakeholder walkthrough
+  - docs/ICP.md: ideal customer profile and plan-tier fit
 
 sources:
   - app/: page routes and layouts
