@@ -6,11 +6,14 @@ import {
   Color3,
   Engine,
   HemisphericLight,
+  Mesh,
   MeshBuilder,
   Scene,
   StandardMaterial,
   Vector3,
+  VertexData,
 } from "@babylonjs/core";
+import { triangulatePolygon } from "@/lib/triangulate";
 
 type Point2D = { x: number; y: number };
 
@@ -52,17 +55,6 @@ export function FlatSceneCanvas({ sceneJson }: FlatSceneCanvasProps) {
     const scene = new Scene(engine);
     scene.clearColor.set(0.03, 0.03, 0.04, 1);
 
-    const camera = new ArcRotateCamera(
-      "camera",
-      -Math.PI / 2.2,
-      Math.PI / 3,
-      24,
-      new Vector3(0, 1.5, 0),
-      scene
-    );
-    camera.attachControl(canvas, true);
-    camera.wheelDeltaPercentage = 0.01;
-
     const hemi = new HemisphericLight("light", new Vector3(0, 1, 0), scene);
     hemi.intensity = 0.95;
 
@@ -74,25 +66,47 @@ export function FlatSceneCanvas({ sceneJson }: FlatSceneCanvasProps) {
     const floorMaterial = new StandardMaterial("floor-material", scene);
     floorMaterial.diffuseColor = new Color3(0.2, 0.22, 0.25);
 
+    // Model bounds (floor polygon + every wall end) in metres.
+    const allPoints = [
+      ...(sceneData.floorPolygon ?? []),
+      ...sceneData.walls.flatMap((wall) => [wall.start, wall.end]),
+    ];
+    const xs = allPoints.map((point) => point.x * unitScale);
+    const zs = allPoints.map((point) => point.y * unitScale);
+    const minX = Math.min(...xs), maxX = Math.max(...xs);
+    const minZ = Math.min(...zs), maxZ = Math.max(...zs);
+    const wallHeightM = Math.max(sceneData.wallHeight * unitScale, 0.1);
+    const span = Math.max(maxX - minX, maxZ - minZ, 1);
+
+    // Camera orbits the model's bounding-box centre, framed to its size.
+    const camera = new ArcRotateCamera(
+      "camera",
+      -Math.PI / 2.2,
+      Math.PI / 3,
+      span * 1.5 + 2,
+      new Vector3((minX + maxX) / 2, wallHeightM / 3, (minZ + maxZ) / 2),
+      scene
+    );
+    camera.lowerRadiusLimit = span * 0.2;
+    camera.upperRadiusLimit = span * 5 + 10;
+    camera.minZ = 0.05;
+    camera.attachControl(canvas, true);
+    camera.wheelDeltaPercentage = 0.01;
+
     if (sceneData.floorPolygon.length >= 3) {
-      const xs = sceneData.floorPolygon.map((point) => point.x);
-      const ys = sceneData.floorPolygon.map((point) => point.y);
-
-      const width = (Math.max(...xs) - Math.min(...xs)) * unitScale;
-      const depth = (Math.max(...ys) - Math.min(...ys)) * unitScale;
-      const centerX = ((Math.max(...xs) + Math.min(...xs)) / 2) * unitScale;
-      const centerZ = ((Math.max(...ys) + Math.min(...ys)) / 2) * unitScale;
-
-      const floor = MeshBuilder.CreateGround(
-        "flat-floor",
-        {
-          width: Math.max(width, 0.5),
-          height: Math.max(depth, 0.5),
-        },
-        scene
-      );
-      floor.position.x = centerX;
-      floor.position.z = centerZ;
+      // Floor follows the real footprint (e.g. an L), not its bounding box.
+      const floor = new Mesh("flat-floor", scene);
+      const positions = sceneData.floorPolygon.flatMap((point) => [
+        point.x * unitScale,
+        0,
+        point.y * unitScale,
+      ]);
+      const vertexData = new VertexData();
+      vertexData.positions = positions;
+      vertexData.indices = triangulatePolygon(sceneData.floorPolygon);
+      vertexData.normals = sceneData.floorPolygon.flatMap(() => [0, 1, 0]);
+      vertexData.applyToMesh(floor);
+      floorMaterial.backFaceCulling = false;
       floor.material = floorMaterial;
     }
 
@@ -119,7 +133,8 @@ export function FlatSceneCanvas({ sceneJson }: FlatSceneCanvasProps) {
         Math.max((wall.height * unitScale) / 2, 0.05),
         centerZ
       );
-      wallMesh.rotation.y = Math.atan2(dy, dx);
+      // Babylon is left-handed: +rotation.y turns +x towards -z, so negate to map plan y → z.
+      wallMesh.rotation.y = -Math.atan2(dy, dx);
       wallMesh.material = wallMaterial;
     });
 

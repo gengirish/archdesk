@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Box, Loader2, Plus, Sparkles, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useProjects } from "@/hooks/useProjects";
@@ -35,11 +35,43 @@ const FlatSceneCanvas = dynamic(
   }
 );
 
+const LAST_PROJECT_KEY = "archdesk:3d-studio:lastProjectId";
+
+function readLastProjectId(): string | null {
+  try {
+    return window.localStorage.getItem(LAST_PROJECT_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeLastProjectId(id: string) {
+  try {
+    window.localStorage.setItem(LAST_PROJECT_KEY, id);
+  } catch {
+    // Storage blocked (private mode etc.) — remembering is a convenience only.
+  }
+}
+
 export default function ThreeDStudioPage() {
   const { data: projects, isLoading: projectsLoading } = useProjects();
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const [projectId, setProjectId] = useState<string>("");
   const [floorPlanId, setFloorPlanId] = useState<string>("");
+
+  // Restore the last selected project; fall back to the first one if it's gone.
+  useEffect(() => {
+    if (projectId || !projects?.length) return;
+    const stored = readLastProjectId();
+    const restored = projects.find((project) => project.id === stored) ?? projects[0];
+    setProjectId(restored.id);
+  }, [projects, projectId]);
+
+  function selectProject(id: string) {
+    setProjectId(id);
+    setFloorPlanId("");
+    writeLastProjectId(id);
+  }
 
   const { data: floorPlans, isLoading: floorPlansLoading } = useProjectFloorPlans(projectId);
   const { data: scenes, isLoading: scenesLoading } = useProjectFlatScenes(projectId);
@@ -140,10 +172,7 @@ export default function ThreeDStudioPage() {
           <div className="grid gap-3 lg:grid-cols-3">
             <Select
               value={projectId || undefined}
-              onValueChange={(value) => {
-                setProjectId(value);
-                setFloorPlanId("");
-              }}
+              onValueChange={selectProject}
               disabled={projectsLoading}
             >
               <SelectTrigger>

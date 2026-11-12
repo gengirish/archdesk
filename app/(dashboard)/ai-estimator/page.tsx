@@ -13,6 +13,7 @@ import {
   Loader2,
   Download,
   FolderPlus,
+  AlertTriangle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,7 +30,13 @@ import { cn, formatINR, formatINRShort } from "@/lib/utils";
 import { FeatureGate } from "@/components/feature-gate";
 import { usePlan } from "@/hooks/usePlan";
 import { EstimatePdfDocument } from "@/components/estimate-pdf";
-import type { CostEstimateResult } from "@/app/api/ai/cost-estimate/route";
+import {
+  estimateInputKey,
+  supportsInteriorAddon,
+  type CostEstimateResult,
+  type EstimateInput,
+  type EstimatorProjectType,
+} from "@/lib/estimator";
 import type { ApiResponse } from "@/types";
 
 const PROJECT_TYPES = [
@@ -102,6 +109,8 @@ export default function AIEstimatorPage() {
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CostEstimateResult | null>(null);
+  /** Inputs that produced `result`; the PDF always uses these. */
+  const [resultInputs, setResultInputs] = useState<EstimateInput | null>(null);
   const [barPhase, setBarPhase] = useState(false);
 
   const areaNum = useMemo(() => {
@@ -114,10 +123,23 @@ export default function AIEstimatorPage() {
     return Number.isFinite(n) && n >= 1 ? n : 1;
   }, [floors]);
 
+  const interiorAllowed = supportsInteriorAddon(projectType as EstimatorProjectType);
+  const currentInputs: EstimateInput = {
+    projectType: projectType as EstimatorProjectType,
+    area: areaNum,
+    quality,
+    location: location.trim(),
+    floors: floorsNum,
+    includeInterior: interiorAllowed && includeInterior,
+  };
+  const isStale =
+    !!result && !!resultInputs && estimateInputKey(resultInputs) !== estimateInputKey(currentInputs);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setResult(null);
+    setResultInputs(null);
     setBarPhase(false);
 
     if (!areaNum || !location.trim()) {
@@ -130,14 +152,7 @@ export default function AIEstimatorPage() {
       const res = await fetch("/api/ai/cost-estimate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          projectType,
-          area: areaNum,
-          quality,
-          location: location.trim(),
-          floors: floorsNum,
-          includeInterior,
-        }),
+        body: JSON.stringify(currentInputs),
       });
       const json = (await res.json()) as ApiResponse<CostEstimateResult>;
       if (!res.ok || json.error || !json.data) {
@@ -145,6 +160,7 @@ export default function AIEstimatorPage() {
         return;
       }
       setResult(json.data);
+      setResultInputs(currentInputs);
       requestAnimationFrame(() => setBarPhase(true));
     } catch {
       setError("Network error. Try again.");
@@ -284,17 +300,23 @@ export default function AIEstimatorPage() {
                 />
               </div>
 
+              {interiorAllowed ? (
               <div className="flex items-center justify-between rounded-lg border border-border bg-background/50 px-3 py-3">
                 <div>
                   <p className="text-sm font-medium text-foreground">Include interior fit-out</p>
                   <p className="text-xs text-muted-foreground">
-                    False ceiling, kitchen, wardrobes, furniture, lighting bands
+                    {projectType === "RESIDENTIAL"
+                      ? "False ceiling, modular kitchen, wardrobes, furniture, lighting"
+                      : projectType === "COMMERCIAL"
+                        ? "Workstations, cabins, false ceiling, reception, pantry, lighting"
+                        : "Partitions, false ceiling, furniture, lighting, storage"}
                   </p>
                 </div>
                 <button
                   type="button"
                   role="switch"
                   aria-checked={includeInterior}
+                  aria-label="Include interior fit-out"
                   onClick={() => setIncludeInterior((v) => !v)}
                   className={cn(
                     "relative h-7 w-12 shrink-0 rounded-full border transition-colors",
@@ -311,6 +333,13 @@ export default function AIEstimatorPage() {
                   />
                 </button>
               </div>
+              ) : (
+                <p className="rounded-lg border border-border bg-background/50 px-3 py-3 text-xs text-muted-foreground">
+                  {projectType === "INTERIOR"
+                    ? "Interior estimates use fit-out categories (carpentry, ceilings, finishes), not construction."
+                    : "Landscape estimates use hardscape, softscape and irrigation categories."}
+                </p>
+              )}
 
               {error && (
                 <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -363,28 +392,29 @@ export default function AIEstimatorPage() {
                   variant="outline"
                   size="sm"
                   className="border-border"
-                  disabled={!result || downloading}
+                  disabled={!result || !resultInputs || isStale || downloading}
+                  title={isStale ? "Inputs changed — re-run the estimate first" : undefined}
                   onClick={async () => {
-                    if (!result) return;
+                    if (!result || !resultInputs || isStale) return;
                     setDownloading(true);
                     try {
                       const blob = await pdf(
                         <EstimatePdfDocument
                           result={result}
                           inputs={{
-                            projectType,
-                            area: areaNum,
-                            quality,
-                            location,
-                            floors: floorsNum,
-                            includeInterior,
+                            projectType: resultInputs.projectType,
+                            area: resultInputs.area,
+                            quality: resultInputs.quality,
+                            location: resultInputs.location,
+                            floors: resultInputs.floors ?? 1,
+                            includeInterior: result.interiorApplied,
                           }}
                         />
                       ).toBlob();
                       const url = URL.createObjectURL(blob);
                       const a = document.createElement("a");
                       a.href = url;
-                      a.download = `ArchDesk-Estimate-${projectType}-${areaNum}sqft.pdf`;
+                      a.download = `ArchDesk-Estimate-${resultInputs.projectType}-${resultInputs.area}sqft.pdf`;
                       a.click();
                       URL.revokeObjectURL(url);
                     } catch {
@@ -410,8 +440,26 @@ export default function AIEstimatorPage() {
               </div>
             </div>
 
+            {isStale && (
+              <div
+                role="status"
+                className="relative mt-4 flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-600 dark:text-amber-400"
+              >
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span>
+                  Inputs changed — re-run the estimate. The figures below are for the previous inputs
+                  and can&apos;t be downloaded.
+                </span>
+              </div>
+            )}
+
             {result && (
-              <div className="relative mt-4 grid gap-3 sm:grid-cols-3">
+              <div
+                className={cn(
+                  "relative mt-4 grid gap-3 sm:grid-cols-3 transition-opacity",
+                  isStale && "opacity-50"
+                )}
+              >
                 <div className="rounded-xl border border-primary/25 bg-gradient-to-br from-primary/15 to-transparent p-4">
                   <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                     Grand total (incl. GST)
@@ -441,9 +489,25 @@ export default function AIEstimatorPage() {
                   <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">
                     {formatINR(result.summary.costPerSqFt)}
                   </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Rate band {formatINR(result.rateRange.min)} – {formatINR(result.rateRange.max)} / sq ft
-                  </p>
+                  <dl className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+                    <div>
+                      <dt className="inline">Shell: </dt>
+                      <dd className="inline tabular-nums">
+                        {formatINR(result.rateRange.used)} (band {formatINR(result.rateRange.min)} –{" "}
+                        {formatINR(result.rateRange.max)})
+                      </dd>
+                    </div>
+                    {result.interiorRateRange && (
+                      <div>
+                        <dt className="inline">With interior: </dt>
+                        <dd className="inline tabular-nums">
+                          {formatINR(result.interiorRateRange.used)} (band{" "}
+                          {formatINR(result.interiorRateRange.min)} –{" "}
+                          {formatINR(result.interiorRateRange.max)})
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
                 </div>
               </div>
             )}
@@ -551,7 +615,7 @@ export default function AIEstimatorPage() {
                     <div className="absolute inset-[14px] flex items-center justify-center rounded-full bg-card text-center shadow-inner ring-1 ring-border/60">
                       <div>
                         <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                          Used rate
+                          Shell rate
                         </p>
                         <p className="text-sm font-semibold tabular-nums text-primary">
                           {formatINR(result.rateRange.used)}

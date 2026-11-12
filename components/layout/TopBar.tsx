@@ -28,6 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { matchesClientSearch } from "@/lib/validation/client";
 import { MobileNav } from "@/components/layout/MobileNav";
 import type { ProjectWithRelations } from "@/types";
 import type { ClientWithProjectCount } from "@/hooks/useClients";
@@ -137,20 +138,16 @@ export function TopBar() {
   const filteredClients = useMemo(() => {
     const list = clients ?? [];
     if (!q) return list;
-    return list.filter(
-      (c) =>
-        c.name.toLowerCase().includes(q) ||
-        c.phone.includes(paletteQuery.trim())
-    );
-  }, [clients, q, paletteQuery]);
+    // Name / email, or phone by digits ("+91 98765", "98765 43210").
+    return list.filter((c) => matchesClientSearch(c, q));
+  }, [clients, q]);
 
   const filteredLeads = useMemo(() => {
     const list = leads ?? [];
     if (!q) return list;
     return list.filter(
       (l) =>
-        l.name.toLowerCase().includes(q) ||
-        l.phone.toLowerCase().includes(q) ||
+        matchesClientSearch({ name: l.name, email: l.email, phone: l.phone }, q) ||
         formatSourceLabel(l.source).toLowerCase().includes(q) ||
         l.source.toLowerCase().includes(q)
     );

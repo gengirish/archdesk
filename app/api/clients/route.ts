@@ -1,6 +1,9 @@
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
+import { clientCreateSchema } from "@/lib/validation/client";
+import { fieldErrors, firstIssueMessage } from "@/lib/validation/form-errors";
+import { clientSearchWhere } from "@/lib/client-search";
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,15 +17,7 @@ export async function GET(request: NextRequest) {
     const clients = await db.client.findMany({
       where: {
         firmId: user.firmId,
-        ...(search
-          ? {
-              OR: [
-                { name: { contains: search, mode: "insensitive" } },
-                { phone: { contains: search, mode: "insensitive" } },
-                { email: { contains: search, mode: "insensitive" } },
-              ],
-            }
-          : {}),
+        ...(search ? clientSearchWhere(search) : {}),
       },
       include: { _count: { select: { projects: true } } },
       orderBy: { updatedAt: "desc" },
@@ -42,23 +37,18 @@ export async function POST(request: NextRequest) {
     const user = await db.user.findUnique({ where: { clerkId: userId } });
     if (!user) return NextResponse.json({ data: null, error: "User not found" }, { status: 404 });
 
-    const body = await request.json();
-    const { name, phone, email, address, city, state, notes } = body;
-
-    if (!name || !phone) {
-      return NextResponse.json({ data: null, error: "Name and phone are required" }, { status: 400 });
+    const parsed = clientCreateSchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) {
+      return NextResponse.json(
+        { data: null, error: firstIssueMessage(parsed.error), fieldErrors: fieldErrors(parsed.error) },
+        { status: 400 }
+      );
     }
 
     const client = await db.client.create({
       data: {
         firmId: user.firmId,
-        name,
-        phone,
-        email,
-        address,
-        city,
-        state: typeof state === "string" && state.trim() ? state.trim().slice(0, 60) : undefined,
-        notes,
+        ...parsed.data,
       },
       include: { _count: { select: { projects: true } } },
     });

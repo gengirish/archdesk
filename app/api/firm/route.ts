@@ -1,20 +1,8 @@
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
-import type { Prisma } from "@prisma/client";
-
-const ALLOWED_PATCH_KEYS = [
-  "name",
-  "phone",
-  "email",
-  "address",
-  "city",
-  "state",
-  "gstNumber",
-  "website",
-  "brandColor",
-  "logo",
-] as const;
+import { firmUpdateSchema } from "@/lib/validation/firm";
+import { fieldErrors, firstIssueMessage } from "@/lib/validation/form-errors";
 
 export async function GET() {
   try {
@@ -47,22 +35,20 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ data: null, error: "Firm not found" }, { status: 404 });
     }
 
-    const body = await request.json();
-    const data: Record<string, unknown> = {};
-
-    for (const key of ALLOWED_PATCH_KEYS) {
-      if (Object.prototype.hasOwnProperty.call(body, key)) {
-        data[key] = body[key];
-      }
+    const parsed = firmUpdateSchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) {
+      return NextResponse.json(
+        { data: null, error: firstIssueMessage(parsed.error), fieldErrors: fieldErrors(parsed.error) },
+        { status: 400 }
+      );
     }
-
-    if (Object.keys(data).length === 0) {
-      return NextResponse.json({ data: null, error: "No valid fields to update" }, { status: 400 });
-    }
+    // city / state are non-nullable with defaults: a blank value keeps the old one.
+    const { city, state, ...rest } = parsed.data;
+    const data = { ...rest, ...(city ? { city } : {}), ...(state ? { state } : {}) };
 
     const firm = await db.firm.update({
       where: { id: user.firmId },
-      data: data as Prisma.FirmUpdateInput,
+      data,
     });
 
     return NextResponse.json({ data: firm, error: null });

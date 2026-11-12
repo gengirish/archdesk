@@ -1,6 +1,7 @@
 import { FloorPlanSourceType } from "@prisma/client";
 import type { FloorPlanPayload } from "@/lib/flat-scene-generator";
 import { FLOOR_PLAN_SCHEMA_VERSION } from "@/lib/flat-scene-generator";
+import { analyzePngPlan, analyzeVectorPlan, type RasterPlanAnalysis } from "@/lib/floor-plan-raster";
 
 export const MAX_FLOOR_PLAN_UPLOAD_BYTES = 20 * 1024 * 1024; // 20 MiB
 
@@ -66,55 +67,29 @@ function sourceTypeFromExtension(ext: string): FloorPlanSourceType {
   return FloorPlanSourceType.IMAGE;
 }
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
+/** Unreadable file: the default sample layout (honest placeholder, no random walls). */
+function fallbackPlan(): FloorPlanPayload {
+  return rectanglePlan(12000, 9000, { withCenterWall: true });
 }
 
-function hashBytes(bytes: Uint8Array): number {
-  let hash = 2166136261;
-  for (let index = 0; index < bytes.length; index += 1) {
-    hash ^= bytes[index];
-    hash = Math.imul(hash, 16777619);
-  }
-  return hash >>> 0;
-}
-
-function seededUnit(seed: number, salt: number): number {
-  const x = Math.imul(seed ^ salt, 2654435761) >>> 0;
-  return x / 4294967295;
-}
-
-function seededInteriorWalls(widthMm: number, heightMm: number, seed: number): WallSegment[] {
-  const walls: WallSegment[] = [];
-  const wallCount = 2 + Math.floor(seededUnit(seed, 101) * 4); // 2..5
-
-  for (let index = 0; index < wallCount; index += 1) {
-    const vertical = seededUnit(seed, 200 + index) >= 0.5;
-    if (vertical) {
-      const x = Math.round(widthMm * clamp(0.2 + seededUnit(seed, 300 + index) * 0.6, 0.15, 0.85));
-      const y1 = Math.round(heightMm * clamp(0.08 + seededUnit(seed, 400 + index) * 0.2, 0.05, 0.3));
-      const y2 = Math.round(heightMm * clamp(0.65 + seededUnit(seed, 500 + index) * 0.3, 0.6, 0.95));
-      walls.push({ start: { x, y: Math.min(y1, y2) }, end: { x, y: Math.max(y1, y2) } });
-      continue;
-    }
-
-    const y = Math.round(heightMm * clamp(0.2 + seededUnit(seed, 600 + index) * 0.6, 0.15, 0.85));
-    const x1 = Math.round(widthMm * clamp(0.08 + seededUnit(seed, 700 + index) * 0.2, 0.05, 0.3));
-    const x2 = Math.round(widthMm * clamp(0.65 + seededUnit(seed, 800 + index) * 0.3, 0.6, 0.95));
-    walls.push({ start: { x: Math.min(x1, x2), y }, end: { x: Math.max(x1, x2), y } });
-  }
-
-  return walls;
-}
-
-function fallbackPlan(seed = 1): FloorPlanPayload {
-  return rectanglePlan(12000, 9000, { withCenterWall: true, seed });
+/** Outer walls from a boundary polygon, plus interior walls. */
+function planFromAnalysis(analysis: RasterPlanAnalysis): FloorPlanPayload {
+  const { polygon, internalWalls } = analysis;
+  const exterior = polygon.map((point, index) => ({
+    start: point,
+    end: polygon[(index + 1) % polygon.length],
+  }));
+  return {
+    schemaVersion: FLOOR_PLAN_SCHEMA_VERSION,
+    polygon,
+    walls: [...exterior, ...internalWalls].slice(0, 500),
+  };
 }
 
 function rectanglePlan(
   widthMm: number,
   heightMm: number,
-  options?: { withCenterWall?: boolean; seed?: number }
+  options?: { withCenterWall?: boolean }
 ): FloorPlanPayload {
   const w = Math.max(2000, Math.round(widthMm));
   const h = Math.max(2000, Math.round(heightMm));
@@ -135,9 +110,6 @@ function rectanglePlan(
 
   if (options?.withCenterWall) {
     walls.push({ start: { x: Math.round(w / 2), y: 0 }, end: { x: Math.round(w / 2), y: Math.round(h * 0.62) } });
-  }
-  if (options?.seed !== undefined) {
-    walls.push(...seededInteriorWalls(w, h, options.seed));
   }
 
   return {
@@ -216,19 +188,24 @@ function webpDimensions(bytes: Uint8Array): { width: number; height: number } | 
 }
 
 function imagePlanFromBytes(ext: string, bytes: Uint8Array): FloorPlanPayload {
-  const seed = hashBytes(bytes.subarray(0, Math.min(bytes.length, 100_000)));
+  // PNG: real wall/boundary detection.
+  if (ext === "png") {
+    const analysis = analyzePngPlan(bytes);
+    if (analysis) return planFromAnalysis(analysis);
+  }
+
+  // JPEG/WebP (no decoder bundled) or an unreadable PNG: outline only, at the
+  // image's aspect ratio. Interior walls are not guessed.
   const dims =
     (ext === "png" ? pngDimensions(bytes) : null) ||
     ((ext === "jpg" || ext === "jpeg") ? jpegDimensions(bytes) : null) ||
     (ext === "webp" ? webpDimensions(bytes) : null);
 
-  if (!dims) return fallbackPlan(seed);
+  if (!dims) return fallbackPlan();
 
   const longestPx = Math.max(dims.width, dims.height);
   const scale = longestPx > 0 ? 12000 / longestPx : 1;
-  const widthMm = dims.width * scale;
-  const heightMm = dims.height * scale;
-  return rectanglePlan(widthMm, heightMm, { withCenterWall: true, seed });
+  return rectanglePlan(dims.width * scale, dims.height * scale);
 }
 
 function parsePdfVectorLineWalls(snippet: string): WallSegment[] {
@@ -261,27 +238,26 @@ function parsePdfVectorLineWalls(snippet: string): WallSegment[] {
 }
 
 function pdfPlanFromBytes(bytes: Uint8Array): FloorPlanPayload {
-  const seed = hashBytes(bytes.subarray(0, Math.min(bytes.length, 250_000)));
   const snippet = new TextDecoder("latin1")
     .decode(bytes.subarray(0, Math.min(bytes.length, 1_800_000)))
     .replace(/\r/g, "\n");
 
   const vectorWalls = parsePdfVectorLineWalls(snippet);
   if (vectorWalls.length >= 4) {
-    return normalizeWallsToPlan(vectorWalls, seed);
+    return normalizeWallsToPlan(vectorWalls);
   }
 
   const match = snippet.match(/\/MediaBox\s*\[\s*-?\d+(?:\.\d+)?\s+-?\d+(?:\.\d+)?\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s*\]/);
-  if (!match) return fallbackPlan(seed);
+  if (!match) return fallbackPlan();
 
   const widthPt = Math.abs(Number.parseFloat(match[1]));
   const heightPt = Math.abs(Number.parseFloat(match[2]));
   if (!Number.isFinite(widthPt) || !Number.isFinite(heightPt) || widthPt <= 0 || heightPt <= 0) {
-    return fallbackPlan(seed);
+    return fallbackPlan();
   }
 
   const ptToMm = 0.352778;
-  return rectanglePlan(widthPt * ptToMm, heightPt * ptToMm, { withCenterWall: true, seed });
+  return rectanglePlan(widthPt * ptToMm, heightPt * ptToMm);
 }
 
 function parseDxfLines(text: string): WallSegment[] {
@@ -361,58 +337,36 @@ function parseDxfLines(text: string): WallSegment[] {
   });
 }
 
-function normalizeWallsToPlan(walls: WallSegment[], seed?: number): FloorPlanPayload {
-  if (walls.length === 0) return fallbackPlan(seed ?? 1);
+function normalizeWallsToPlan(walls: WallSegment[]): FloorPlanPayload {
+  if (walls.length === 0) return fallbackPlan();
 
+  // Preferred: trace the real footprint and dedupe the line work.
+  const analysis = analyzeVectorPlan(walls);
+  if (analysis) return planFromAnalysis(analysis);
+
+  // Open line work with no enclosed footprint: keep the lines, scaled, with
+  // a bounding outline (no invented walls).
   const points = walls.flatMap((wall) => [wall.start, wall.end]);
   const minX = Math.min(...points.map((p) => p.x));
   const maxX = Math.max(...points.map((p) => p.x));
   const minY = Math.min(...points.map((p) => p.y));
   const maxY = Math.max(...points.map((p) => p.y));
-
-  const rawWidth = maxX - minX;
-  const rawHeight = maxY - minY;
-  if (!(rawWidth > 0) || !(rawHeight > 0)) return fallbackPlan(seed ?? 1);
-
-  const longest = Math.max(rawWidth, rawHeight);
-  const metersLikely = longest <= 50;
-  const unitMultiplier = metersLikely ? 1000 : 1;
-  const scaledWidth = rawWidth * unitMultiplier;
-  const scaledHeight = rawHeight * unitMultiplier;
-  const normalizeScale = 12000 / Math.max(scaledWidth, scaledHeight);
-
-  const normalized = walls
-    .map((wall) => ({
-      start: {
-        x: Math.round((wall.start.x - minX) * unitMultiplier * normalizeScale),
-        y: Math.round((wall.start.y - minY) * unitMultiplier * normalizeScale),
-      },
-      end: {
-        x: Math.round((wall.end.x - minX) * unitMultiplier * normalizeScale),
-        y: Math.round((wall.end.y - minY) * unitMultiplier * normalizeScale),
-      },
-    }))
-    .slice(0, 500);
-
-  const widthMm = Math.max(2000, Math.round(scaledWidth * normalizeScale));
-  const heightMm = Math.max(2000, Math.round(scaledHeight * normalizeScale));
-  const boundary = rectanglePlan(widthMm, heightMm, {
-    withCenterWall: false,
-    seed,
-  });
-
+  const longest = Math.max(maxX - minX, maxY - minY);
+  if (!(longest > 0)) return fallbackPlan();
+  const scale = 12000 / longest;
+  const tx = (p: Point2D) => ({ x: Math.round((p.x - minX) * scale), y: Math.round((p.y - minY) * scale) });
+  const outline = rectanglePlan((maxX - minX) * scale, (maxY - minY) * scale);
   return {
     schemaVersion: FLOOR_PLAN_SCHEMA_VERSION,
-    polygon: boundary.polygon,
-    walls: [...boundary.walls, ...normalized],
+    polygon: outline.polygon,
+    walls: walls.map((wall) => ({ start: tx(wall.start), end: tx(wall.end) })).slice(0, 500),
   };
 }
 
 function dxfPlanFromBytes(bytes: Uint8Array): FloorPlanPayload {
-  const seed = hashBytes(bytes.subarray(0, Math.min(bytes.length, 250_000)));
   const text = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
   const lines = parseDxfLines(text);
-  return normalizeWallsToPlan(lines, seed);
+  return normalizeWallsToPlan(lines);
 }
 
 export async function toFloorPlanFromUpload(file: File): Promise<UploadParseResult> {

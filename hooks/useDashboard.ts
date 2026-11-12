@@ -1,5 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
 import type { DashboardStats } from "@/types";
+import type { BillingSummary } from "@/lib/billing-metrics";
+import type { MonthlyRevenue } from "@/lib/dashboard-kpis";
+
+/** /api/dashboard/stats response: the base stats plus the spec KPIs. */
+export type DashboardKpis = DashboardStats & {
+  billing: BillingSummary;
+  monthlyRevenue: MonthlyRevenue;
+  pendingDrawingApprovals: number;
+  pipelineValue: number;
+  overdueMilestones: { count: number; amount: number };
+  stageDistribution: { stage: string; count: number }[];
+};
 
 type ApiEnvelope<T> = { data: T | null; error: string | null };
 
@@ -22,9 +34,9 @@ export const dashboardKeys = {
 export function useDashboardStats() {
   return useQuery({
     queryKey: dashboardKeys.stats(),
-    queryFn: async (): Promise<DashboardStats> => {
+    queryFn: async (): Promise<DashboardKpis> => {
       const res = await fetch("/api/dashboard/stats");
-      return parseApiResponse<DashboardStats>(res);
+      return parseApiResponse<DashboardKpis>(res);
     },
     staleTime: 1000 * 30,
   });

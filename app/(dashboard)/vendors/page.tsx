@@ -1,12 +1,10 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { Plus, Search, Truck, Phone, MapPin, Star, Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import { useMemo, useState } from "react";
+import { Plus, Search, Truck, Phone, MapPin, Mail, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -15,96 +13,45 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { FeatureGate } from "@/components/feature-gate";
-import type { VendorCategory } from "@/types";
+import type { Vendor } from "@/types";
 import { usePlan } from "@/hooks/usePlan";
-import { useVendors, useCreateVendor } from "@/hooks/useVendors";
+import { useVendors } from "@/hooks/useVendors";
+import { StarDisplay } from "@/components/vendors/StarRating";
+import { VendorFormDialog, vendorCategoryLabel } from "@/components/vendors/VendorFormDialog";
+import { VENDOR_CATEGORIES } from "@/lib/validation/vendor";
+import { phoneSearchDigits } from "@/lib/validation/common";
 
-const categories = [
-  "ALL", "CONTRACTOR", "TILES", "STEEL", "WOOD", "GLASS",
-  "ELECTRICAL", "PLUMBING", "PAINT", "HARDWARE", "FURNITURE", "LANDSCAPING", "OTHER",
-];
-
-const vendorFormCategories: VendorCategory[] = [
-  "CONTRACTOR",
-  "TILES",
-  "STEEL",
-  "WOOD",
-  "GLASS",
-  "ELECTRICAL",
-  "PLUMBING",
-  "PAINT",
-  "HARDWARE",
-  "FURNITURE",
-  "LANDSCAPING",
-  "OTHER",
-];
+const categories = ["ALL", ...VENDOR_CATEGORIES];
 
 export default function VendorsPage() {
   const { plan } = usePlan();
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("ALL");
-  const [addVendorOpen, setAddVendorOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [category, setCategory] = useState<VendorCategory>("CONTRACTOR");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [city, setCity] = useState("");
-  const [gst, setGst] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<Vendor | null>(null);
   const { data: vendors, isLoading } = useVendors();
-  const createVendor = useCreateVendor();
 
-  const resetVendorForm = () => {
-    setName("");
-    setCategory("CONTRACTOR");
-    setPhone("");
-    setEmail("");
-    setCity("");
-    setGst("");
+  const openAdd = () => {
+    setEditing(null);
+    setDialogOpen(true);
+  };
+  const openEdit = (v: Vendor) => {
+    setEditing(v);
+    setDialogOpen(true);
   };
 
-  const handleAddVendor = (e: FormEvent) => {
-    e.preventDefault();
-    const trimmedName = name.trim();
-    const trimmedPhone = phone.trim();
-    if (!trimmedName || !trimmedPhone) return;
-    createVendor.mutate(
-      {
-        name: trimmedName,
-        category,
-        phone: trimmedPhone,
-        email: email.trim() || undefined,
-        city: city.trim() || undefined,
-        gst: gst.trim() || undefined,
-      },
-      {
-        onSuccess: () => {
-          toast.success("Vendor added");
-          setAddVendorOpen(false);
-          resetVendorForm();
-        },
-        onError: (err) => {
-          toast.error(err instanceof Error ? err.message : "Failed to add vendor");
-        },
-      }
-    );
-  };
-
-  const vendorsList = vendors ?? [];
-
-  const filtered = vendorsList.filter((v) => {
-    if (search && !v.name.toLowerCase().includes(search.toLowerCase())) return false;
-    if (categoryFilter !== "ALL" && v.category !== categoryFilter) return false;
-    return true;
-  });
+  const vendorsList = useMemo(() => vendors ?? [], [vendors]);
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const digits = phoneSearchDigits(q);
+    return vendorsList.filter((v) => {
+      if (categoryFilter !== "ALL" && v.category !== categoryFilter) return false;
+      if (!q) return true;
+      if (v.name.toLowerCase().includes(q) || (v.city ?? "").toLowerCase().includes(q)) return true;
+      return digits ? v.phone.replace(/\D/g, "").includes(digits) : false;
+    });
+  }, [vendorsList, search, categoryFilter]);
 
   if (isLoading) {
     return (
@@ -124,117 +71,20 @@ export default function VendorsPage() {
             {vendorsList.length} vendors in your network
           </p>
         </div>
-        <Button type="button" onClick={() => setAddVendorOpen(true)}>
+        <Button type="button" onClick={openAdd}>
           <Plus className="mr-2 h-4 w-4" />
           Add Vendor
         </Button>
       </div>
 
-      <Dialog open={addVendorOpen} onOpenChange={setAddVendorOpen}>
-        <DialogContent className="sm:max-w-md">
-          <form onSubmit={handleAddVendor}>
-            <DialogHeader>
-              <DialogTitle>Add vendor</DialogTitle>
-              <DialogDescription>Add a vendor to your network.</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="vendor-name">Name</Label>
-                <Input
-                  id="vendor-name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  autoComplete="organization"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="vendor-category">Category</Label>
-                <Select
-                  value={category}
-                  onValueChange={(v) => setCategory(v as VendorCategory)}
-                  required
-                >
-                  <SelectTrigger id="vendor-category">
-                    <SelectValue placeholder="Category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {vendorFormCategories.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat.charAt(0) + cat.slice(1).toLowerCase()}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="vendor-phone">Phone</Label>
-                <Input
-                  id="vendor-phone"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  required
-                  autoComplete="tel"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="vendor-email">Email</Label>
-                <Input
-                  id="vendor-email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  autoComplete="email"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="vendor-city">City</Label>
-                <Input
-                  id="vendor-city"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  placeholder="Hubbali"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="vendor-gst">GST</Label>
-                <Input
-                  id="vendor-gst"
-                  value={gst}
-                  onChange={(e) => setGst(e.target.value)}
-                  placeholder="29XXXXX1234X1Z5"
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setAddVendorOpen(false)}
-                disabled={createVendor.isPending}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={createVendor.isPending}>
-                {createVendor.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Adding…
-                  </>
-                ) : (
-                  "Submit"
-                )}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <VendorFormDialog open={dialogOpen} onOpenChange={setDialogOpen} vendor={editing} />
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative w-full sm:w-auto sm:max-w-xs sm:flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search vendors..."
+            placeholder="Search by name, city or phone…"
+            aria-label="Search vendors"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
@@ -247,7 +97,7 @@ export default function VendorsPage() {
           <SelectContent>
             {categories.map((cat) => (
               <SelectItem key={cat} value={cat}>
-                {cat === "ALL" ? "All Categories" : cat.charAt(0) + cat.slice(1).toLowerCase()}
+                {cat === "ALL" ? "All Categories" : vendorCategoryLabel(cat)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -263,22 +113,29 @@ export default function VendorsPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {filtered.map((vendor) => (
-          <Card key={vendor.id} className="cursor-pointer transition-colors hover:border-primary/30">
+          <Card
+            key={vendor.id}
+            role="button"
+            tabIndex={0}
+            aria-label={`Edit ${vendor.name}`}
+            onClick={() => openEdit(vendor)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                openEdit(vendor);
+              }
+            }}
+            className="cursor-pointer transition-colors hover:border-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
             <CardContent className="p-5">
               <div className="flex items-start justify-between">
                 <div className="min-w-0 flex-1">
                   <h3 className="truncate text-sm font-medium">{vendor.name}</h3>
                   <Badge variant="secondary" className="mt-1 text-[10px]">
-                    {vendor.category.charAt(0) + vendor.category.slice(1).toLowerCase()}
+                    {vendorCategoryLabel(vendor.category)}
                   </Badge>
                 </div>
-                {vendor.rating && (
-                  <div className="flex items-center gap-0.5 text-primary">
-                    {Array.from({ length: vendor.rating }).map((_, i) => (
-                      <Star key={i} className="h-3 w-3 fill-current" />
-                    ))}
-                  </div>
-                )}
+                <StarDisplay rating={vendor.rating} className="shrink-0" />
               </div>
 
               <div className="mt-3 space-y-1">
@@ -286,10 +143,18 @@ export default function VendorsPage() {
                   <Phone className="h-3 w-3" />
                   +91 {vendor.phone}
                 </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <MapPin className="h-3 w-3" />
-                  {vendor.city}
-                </div>
+                {vendor.email && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Mail className="h-3 w-3" />
+                    <span className="truncate">{vendor.email}</span>
+                  </div>
+                )}
+                {vendor.city && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <MapPin className="h-3 w-3" />
+                    {vendor.city}
+                  </div>
+                )}
               </div>
 
               {vendor.gst && (

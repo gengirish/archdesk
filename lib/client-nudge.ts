@@ -1,4 +1,4 @@
-import { Resend } from "resend";
+import { getDefaultMailer } from "@/lib/email/factory";
 
 export type NudgeChannel = "EMAIL" | "WHATSAPP";
 
@@ -19,16 +19,6 @@ export type NudgeDeliveryResult = {
   errorMessage?: string;
   idempotencyKey?: string;
 };
-
-let resendClient: Resend | null = null;
-
-function getResendClient(): Resend | null {
-  if (!process.env.RESEND_API_KEY) return null;
-  if (!resendClient) {
-    resendClient = new Resend(process.env.RESEND_API_KEY);
-  }
-  return resendClient;
-}
 
 function textHash(value: string): string {
   let hash = 0;
@@ -97,18 +87,18 @@ export async function deliverClientNudge(
     };
   }
 
-  const resend = getResendClient();
-  const from = process.env.EMAIL_FROM;
-  if (!resend || !from) {
+  const mailer = getDefaultMailer();
+  if (!mailer) {
     return {
-      provider: "resend",
+      provider: "none",
       status: "FAILED",
-      errorMessage: "Resend is not configured (RESEND_API_KEY or EMAIL_FROM missing)",
+      errorMessage:
+        "Email is not configured (set AGENTMAIL_API_KEY + AGENTMAIL_FROM_INBOX_ID, or RESEND_API_KEY + EMAIL_FROM)",
     };
   }
   if (!payload.clientEmail) {
     return {
-      provider: "resend",
+      provider: mailer.provider,
       status: "FAILED",
       errorMessage: "Client email is missing",
     };
@@ -117,28 +107,29 @@ export async function deliverClientNudge(
   const messageHash = textHash(payload.customMessage?.trim() || "");
   const idempotencyKey = `client-nudge/${idempotencySeed}/email/${messageHash}`;
 
-  // resend@3.5 has no idempotency option; the route's 12h cooldown prevents double sends.
-  const { data, error } = await resend.emails.send({
-    from,
+  // Neither provider guarantees send-level idempotency; the route cooldowns prevent double sends.
+  const result = await mailer.send({
     to: [payload.clientEmail],
     subject: `Reminder: decision pending for ${payload.milestoneName}`,
     html: buildEmailHtml(payload),
     text: buildEmailText(payload),
+    labels: ["client-nudge"],
+    idempotencyKey,
   });
 
-  if (error) {
+  if (!result.ok) {
     return {
-      provider: "resend",
+      provider: result.provider,
       status: "FAILED",
-      errorMessage: error.message,
+      errorMessage: result.error,
       idempotencyKey,
     };
   }
 
   return {
-    provider: "resend",
+    provider: result.provider,
     status: "SENT",
-    providerMessageId: data?.id,
+    providerMessageId: result.messageId,
     idempotencyKey,
   };
 }
