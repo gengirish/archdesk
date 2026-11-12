@@ -8,8 +8,13 @@ on:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    # Pinned: Playwright doesn't support ubuntu-latest (26.04) yet.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
+    # Clerk keys are needed to prerender pages (build) and to boot the dev server (E2E).
+    env:
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -36,8 +41,18 @@ jobs:
         run: npm run build
 
   e2e_public:
-    runs-on: ubuntu-latest
+    # Pinned: Playwright doesn't support ubuntu-latest (26.04) yet.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
+    # Chromium and its system libraries come preinstalled, so the job never
+    # needs the Ubuntu apt mirrors (which kept timing out on `--with-deps`).
+    # Keep the tag in sync with @playwright/test in package-lock.json.
+    container:
+      image: mcr.microsoft.com/playwright:v1.58.2-noble
+    # Clerk keys are needed to prerender pages (build) and to boot the dev server (E2E).
+    env:
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -50,9 +65,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
 
       - name: Run public smoke E2E
         run: npm run test:e2e:public
