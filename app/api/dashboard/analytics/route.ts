@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getFirmBillingSummary } from "@/lib/billing-metrics-server";
 import { classifyDecisionSla } from "@/lib/decision-sla";
-import { calculateGST } from "@/lib/utils";
+import { calculateGST, formatMonthYear } from "@/lib/utils";
 
 function monthKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -12,9 +12,7 @@ function monthKey(d: Date): string {
 
 function labelForMonthKey(key: string): string {
   const [y, m] = key.split("-").map(Number);
-  return new Intl.DateTimeFormat("en-IN", { month: "short", year: "numeric" }).format(
-    new Date(y, m - 1, 1),
-  );
+  return formatMonthYear(y, m);
 }
 
 function rolling12MonthKeys(end: Date): string[] {

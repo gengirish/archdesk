@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     "architecture",
     "design",
     "project management",
-    "Hubbali",
+    "Hubballi",
     "Karnataka",
     "IntelliForge AI",
   ],

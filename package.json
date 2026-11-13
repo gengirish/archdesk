@@ -18,6 +18,8 @@
     "typecheck": "tsc --noEmit",
     "test:e2e": "npx playwright test",
     "test:e2e:public": "npx playwright test -c playwright.public.config.ts",
+    "test:e2e:qa": "npx playwright test e2e/qa-flows.spec.ts",
+    "test:e2e:mobile": "npx playwright test e2e/mobile-smoke.spec.ts",
     "test:e2e:headed": "npx playwright test --headed",
     "test:e2e:ui": "npx playwright test --ui",
     "db:push": "prisma db push",
@@ -27,7 +29,8 @@
     "docs:info": "doctrace info docs/",
     "docs:affected": "doctrace affected docs/ --last 5",
     "docs:preview": "doctrace preview docs/",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {
     "@babylonjs/core": "^9.0.0",

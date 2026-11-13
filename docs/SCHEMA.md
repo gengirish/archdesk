@@ -28,7 +28,7 @@ Tenant root — every user, client, project, lead, and vendor belongs to a firm.
 | phone | String | Contact phone |
 | email | String | Contact email |
 | address | String? | Office address |
-| city | String | Default: "Hubbali" |
+| city | String | Default: "Hubballi" |
 | state | String | Default: "Karnataka" |
 | brandColor | String | Default: "#E8A045" |
 | website | String? | Firm website |
@@ -392,7 +392,7 @@ Delivery audit log for staff-triggered reminder nudges on open client decision r
 | phone | String | Phone number |
 | email | String? | Email |
 | address | String? | Address |
-| city | String | Default: "Hubbali" |
+| city | String | Default: "Hubballi" |
 | gst | String? | GST number |
 | notes | String? | Notes |
 | rating | Int? | 1–5 stars |

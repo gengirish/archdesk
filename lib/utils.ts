@@ -32,21 +32,75 @@ export function formatINRShort(amount: number): string {
   return `${sign}${formatINR(abs)}`;
 }
 
-// ── Date formatting (Indian style) ───────────────────────────
-export function formatDate(date: Date | string): string {
-  return new Intl.DateTimeFormat("en-IN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(new Date(date));
+// ── Date formatting ──────────────────────────────────────────
+// Always "11 Nov 2026" (DD MMM YYYY) in India time. Month names are our own:
+// Intl's en-IN locale prints "Sept", and numeric dates like 11/11/2026 are
+// ambiguous.
+const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTHS_LONG = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+const IST_PARTS = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Asia/Kolkata",
+  year: "numeric",
+  month: "numeric",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+/** Calendar parts of a date in India time. */
+export function istParts(date: Date | string) {
+  const parts = Object.fromEntries(
+    IST_PARTS.formatToParts(new Date(date)).map((p) => [p.type, p.value])
+  );
+  return {
+    year: Number(parts.year),
+    month: Number(parts.month), // 1–12
+    day: Number(parts.day),
+    hour: Number(parts.hour),
+    minute: Number(parts.minute),
+  };
 }
 
-export function formatDateLong(date: Date | string): string {
-  return new Intl.DateTimeFormat("en-IN", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(new Date(date));
+function validDate(date: Date | string | null | undefined): Date | null {
+  if (date == null || date === "") return null;
+  const d = new Date(date);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/** "11 Nov 2026". Returns "" for empty/invalid input. */
+export function formatDate(date: Date | string | null | undefined): string {
+  const d = validDate(date);
+  if (!d) return "";
+  const p = istParts(d);
+  return `${String(p.day).padStart(2, "0")} ${MONTHS_SHORT[p.month - 1]} ${p.year}`;
+}
+
+/** "11 November 2026". */
+export function formatDateLong(date: Date | string | null | undefined): string {
+  const d = validDate(date);
+  if (!d) return "";
+  const p = istParts(d);
+  return `${p.day} ${MONTHS_LONG[p.month - 1]} ${p.year}`;
+}
+
+/** "11 Nov 2026, 3:05 pm" in India time. */
+export function formatDateTime(date: Date | string | null | undefined): string {
+  const d = validDate(date);
+  if (!d) return "";
+  const p = istParts(d);
+  const h12 = p.hour % 12 || 12;
+  return `${formatDate(d)}, ${h12}:${String(p.minute).padStart(2, "0")} ${p.hour < 12 ? "am" : "pm"}`;
+}
+
+/** "Sep 2026" for chart axes. Takes a Date, or a year and 1-based month. */
+export function formatMonthYear(dateOrYear: Date | string | number, month?: number): string {
+  if (typeof dateOrYear === "number" && month) return `${MONTHS_SHORT[month - 1]} ${dateOrYear}`;
+  const p = istParts(dateOrYear as Date | string);
+  return `${MONTHS_SHORT[p.month - 1]} ${p.year}`;
 }
 
 export function isOverdue(date: Date | string): boolean {

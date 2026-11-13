@@ -8,7 +8,7 @@ Powered by [IntelliForge AI](https://www.intelliforge.tech/)
 
 ## Overview
 
-ArchDesk is a vertical SaaS platform purpose-built for architecture and interior design firms in Tier-2 Indian cities, starting with Hubbali-Dharwad, Karnataka. It replaces fragmented workflows of WhatsApp, Excel, and manual invoicing with a single unified platform.
+ArchDesk is a vertical SaaS platform purpose-built for architecture and interior design firms in Tier-2 Indian cities, starting with Hubballi-Dharwad, Karnataka. It replaces fragmented workflows of WhatsApp, Excel, and manual invoicing with a single unified platform.
 
 **Target users:** Firm owners, architects, draftsmen, site managers, and their clients.
 

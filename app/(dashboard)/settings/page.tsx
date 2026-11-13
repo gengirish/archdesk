@@ -39,7 +39,7 @@ function fromFirm(firm: Firm): FormState {
     name: firm.name ?? "",
     gstNumber: firm.gstNumber ?? "",
     // Placeholders like "—" from older sign-ups show as empty.
-    phone: isPlaceholder(firm.phone) ? "" : firm.phone,
+    phone: isPlaceholder(firm.phone) ? "" : (firm.phone ?? ""),
     email: firm.email ?? "",
     address: firm.address ?? "",
     city: firm.city ?? "",

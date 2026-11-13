@@ -26,7 +26,7 @@ sources:
 
 ## Overview
 
-ArchDesk is a vertical SaaS platform purpose-built for architecture and interior design firms operating in Tier-2 Indian cities. The first target market is Hubbali-Dharwad, Karnataka.
+ArchDesk is a vertical SaaS platform purpose-built for architecture and interior design firms operating in Tier-2 Indian cities. The first target market is Hubballi-Dharwad, Karnataka.
 
 It replaces the fragmented workflow of WhatsApp groups, Excel sheets, and manual invoicing with a single unified platform covering the full project lifecycle — from lead enquiry to final payment collection.
 
@@ -259,7 +259,7 @@ Contractor, Tiles, Steel, Wood, Glass, Electrical, Plumbing, Paint, Hardware, Fu
 - GST number tracking for vendors with GST registration
 - Notes field for vendor-specific information
 
-**Local focus:** Default city is Hubbali. Covers vendors in Hubbali, Dharwad, Belagavi, Davangere, and Mysuru.
+**Local focus:** Default city is Hubballi. Covers vendors in Hubballi, Dharwad, Belagavi, Davangere, and Mysuru.
 
 ---
 
@@ -482,5 +482,5 @@ Authenticated tests use Clerk Backend API sign-in tokens to bypass 2FA.
 | Dates | DD/MM/YYYY format |
 | Phone | +91 prefix, 10-digit validation |
 | Payments | Razorpay with UPI as primary method |
-| Cities | Hubbali, Dharwad, Belagavi, Davangere, Mysuru |
+| Cities | Hubballi, Dharwad, Belagavi, Davangere, Mysuru |
 | Language | English (en-IN locale) |
