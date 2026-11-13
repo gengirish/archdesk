@@ -43,7 +43,7 @@ export async function provisionUser(input: ProvisionUserInput) {
   try {
     return await db.$transaction(async (tx) => {
       const firm = await tx.firm.create({
-        data: { name: `${name}'s Firm`, email, phone: phone || "—", plan: signupDefaultPlan() },
+        data: { name: `${name}'s Firm`, email, phone: phone || null, plan: signupDefaultPlan() },
       });
 
       return tx.user.create({

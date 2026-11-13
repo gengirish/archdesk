@@ -96,7 +96,7 @@
 
 ### 11. AI Cost Estimator (`/ai-estimator`)
 
-- [ ] Select: Residential, 1800 sqft, Premium, Hubbali, 2 floors
+- [ ] Select: Residential, 1800 sqft, Premium, Hubballi, 2 floors
 - [ ] Click "Estimate" → cost breakdown renders with category-wise split
 - [ ] Grand total shows base + GST (18%)
 - [ ] "Download estimate" → PDF downloads with correct filename

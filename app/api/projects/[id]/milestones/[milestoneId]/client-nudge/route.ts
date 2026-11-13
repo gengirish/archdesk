@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { deliverClientNudge } from "@/lib/client-nudge";
+import { formatDateTime } from "@/lib/utils";
 
 /** Manual nudges: at most one successful nudge per milestone in this window. */
 const NUDGE_COOLDOWN_HOURS = 12;
@@ -105,13 +106,7 @@ export async function POST(
     });
     if (recent) {
       const nextAt = new Date(recent.createdAt.getTime() + NUDGE_COOLDOWN_HOURS * 60 * 60 * 1000);
-      const time = nextAt.toLocaleString("en-IN", {
-        timeZone: "Asia/Kolkata",
-        day: "2-digit",
-        month: "short",
-        hour: "numeric",
-        minute: "2-digit",
-      });
+      const time = formatDateTime(nextAt);
       return NextResponse.json(
         {
           data: null,

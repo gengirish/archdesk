@@ -2,6 +2,7 @@
 
 import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { CostEstimateResult } from "@/app/api/ai/cost-estimate/route";
+import { formatDate } from "@/lib/utils";
 
 const ACCENT = "#E8A045";
 const DARK = "#111318";
@@ -141,11 +142,7 @@ export type EstimatePdfProps = {
 };
 
 export function EstimatePdfDocument({ result, inputs }: EstimatePdfProps) {
-  const today = new Date().toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  const today = formatDate(new Date());
 
   const constructionSubtotal = result.breakdown.reduce((sum, r) => sum + r.amount, 0);
   const interiorSubtotal = result.interiorBreakdown?.reduce((sum, r) => sum + r.amount, 0) ?? 0;

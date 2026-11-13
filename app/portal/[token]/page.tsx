@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { FileText, MapPin, CalendarDays, Camera, CheckCircle2, Circle } from "lucide-react";
 import { db } from "@/lib/db";
 import { isPlausiblePortalToken } from "@/lib/portal-token";
+import { isPlaceholder as isPlaceholderPhone } from "@/lib/validation/common";
 import { formatINR, formatDate, calculateGST, STAGE_LABELS, isOverdue } from "@/lib/utils";
 import type { MilestoneStatus, ProjectStage } from "@prisma/client";
 import { MilestoneDecisionCard } from "@/components/portal/milestone-decision-card";
@@ -118,6 +119,8 @@ export default async function ClientPortalPage({ params }: { params: { token: st
                 height={48}
                 className="h-12 w-auto max-w-[200px] object-contain"
                 priority
+                // next/image won't optimise SVG; serve it as-is.
+                unoptimized={/\.svg(\?|$)/i.test(firm.logo)}
               />
             ) : (
               <div
@@ -372,7 +375,8 @@ export default async function ClientPortalPage({ params }: { params: { token: st
       </main>
 
       <footer className="border-t border-slate-200 py-8 text-center text-xs text-slate-500">
-        Shared securely via ArchDesk · Questions? Reach {firm.name} at {firm.email} or {firm.phone}.
+        Shared securely via ArchDesk · Questions? Reach {firm.name} at {firm.email}
+        {firm.phone && !isPlaceholderPhone(firm.phone) ? ` or ${firm.phone}` : ""}.
       </footer>
     </div>
   );

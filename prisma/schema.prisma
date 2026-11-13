@@ -20,10 +20,10 @@ model Firm {
   name        String
   logo        String?
   gstNumber   String?
-  phone       String
+  phone       String?
   email       String
   address     String?
-  city        String   @default("Hubbali")
+  city        String   @default("Hubballi")
   state       String   @default("Karnataka")
   brandColor  String   @default("#E8A045")
   website     String?
@@ -627,7 +627,7 @@ model Vendor {
   phone    String
   email    String?
   address  String?
-  city     String         @default("Hubbali")
+  city     String         @default("Hubballi")
   gst      String?
   notes    String?
   rating   Int?           // 1-5

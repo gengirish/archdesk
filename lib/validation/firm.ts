@@ -17,7 +17,7 @@ export const firmUpdateSchema = z
   .object({
     name: z.string().trim().min(1, "Firm name is required").max(120).optional(),
     // Firm.phone is non-nullable: blank / "—" is stored as "" (shown as "not set").
-    phone: optionalIndianMobileSchema.transform((v) => v ?? "").optional(),
+    phone: optionalIndianMobileSchema.optional(),
     email: emailSchema.optional(),
     address: optionalTextSchema(300).optional(),
     city: optionalTextSchema(80).optional(),

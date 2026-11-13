@@ -12,7 +12,7 @@ sources:
 
 > A guided tour of ArchDesk for stakeholders, investors, and early users.
 >
-> **Persona:** You are Arjun Deshpande, the owner of "DesignCraft Studios" — a 5-person architecture firm in Hubbali, Karnataka. You manage residential, commercial, and interior projects across Hubbali-Dharwad.
+> **Persona:** You are Arjun Deshpande, the owner of "DesignCraft Studios" — a 5-person architecture firm in Hubballi, Karnataka. You manage residential, commercial, and interior projects across Hubballi-Dharwad.
 
 ---
 
@@ -47,7 +47,7 @@ npm run dev
 
 | Entity | Count | Highlights |
 |--------|------:|------------|
-| Firm | 1 | DesignCraft Studios, GST-registered, Hubbali, **Enterprise plan** |
+| Firm | 1 | DesignCraft Studios, GST-registered, Hubballi, **Enterprise plan** |
 | Users | 5 | All 5 roles (see below) |
 | Clients | 8 | Mix of residential, commercial, NRI |
 | Projects | 10 | 6 project types, 7 stages, Active/Completed/On-hold |
@@ -89,14 +89,14 @@ All 5 roles have real Clerk accounts for persona-based demos:
 
 | Client | Phone | City | Project(s) | Notes |
 |--------|-------|------|-----------|-------|
-| Rajesh Kulkarni | 7416642072 | Hubbali | Kulkarni Residence, Vidya Niketan School | Long-term client, WhatsApp preferred |
-| Lakshmi Hegde | 7416642072 | Hubbali | Hegde Villa, Hegde Garden (completed) | Detail-oriented, wants photo updates |
-| Vikram Patil | 7416642072 | Hubbali | Patil Farmhouse | NRI client — prefers email & portal |
-| Dr. Ananya Bhat | 7416642072 | Hubbali | Bhat Dental Clinic | Available after 6 PM only |
+| Rajesh Kulkarni | 7416642072 | Hubballi | Kulkarni Residence, Vidya Niketan School | Long-term client, WhatsApp preferred |
+| Lakshmi Hegde | 7416642072 | Hubballi | Hegde Villa, Hegde Garden (completed) | Detail-oriented, wants photo updates |
+| Vikram Patil | 7416642072 | Hubballi | Patil Farmhouse | NRI client — prefers email & portal |
+| Dr. Ananya Bhat | 7416642072 | Hubballi | Bhat Dental Clinic | Available after 6 PM only |
 | Siddharth Nadiger | 7416642072 | Dharwad | Nadiger Retail Showroom | Weekend meetings, showroom chain |
-| Meera Joshi | 7416642072 | Hubbali | Joshi Apartment Interiors | — |
-| Naveen Hosamani | 7416642072 | Hubbali | Hosamani Warehouse | Referred by Rajesh Kulkarni |
-| Savita Desai | 7416642072 | Hubbali | Desai Row Houses (on-hold) | — |
+| Meera Joshi | 7416642072 | Hubballi | Joshi Apartment Interiors | — |
+| Naveen Hosamani | 7416642072 | Hubballi | Hosamani Warehouse | Referred by Rajesh Kulkarni |
+| Savita Desai | 7416642072 | Hubballi | Desai Row Houses (on-hold) | — |
 
 ---
 
@@ -252,14 +252,14 @@ All 5 roles have real Clerk accounts for persona-based demos:
 
 | Vendor | Category | City | Rating | GST | Specialty |
 |--------|----------|------|--------|-----|-----------|
-| Shree Basaveshwara Civil Contractors | Contractor | Hubbali | ★★★★★ | Yes | Go-to for RCC & masonry. 20+ years |
-| Karnataka Tile House | Tiles | Hubbali | ★★★★ | — | Full vitrified, ceramic, sanitary display |
-| PowerLine Electricals | Electrical | Hubbali | ★★★★ | Yes | Havells & Schneider auth. Home automation |
-| FlowRight Plumbing Solutions | Plumbing | Hubbali | ★★★★★ | — | Best plumbing crew. Jaquar certified |
-| ColourCraft Paints & Coatings | Paint | Hubbali | ★★★★ | — | Asian Paints & Berger authorised |
-| North Karnataka Steel Traders | Steel | Hubbali | ★★★★ | Yes | TMT bars. Same-day delivery |
+| Shree Basaveshwara Civil Contractors | Contractor | Hubballi | ★★★★★ | Yes | Go-to for RCC & masonry. 20+ years |
+| Karnataka Tile House | Tiles | Hubballi | ★★★★ | — | Full vitrified, ceramic, sanitary display |
+| PowerLine Electricals | Electrical | Hubballi | ★★★★ | Yes | Havells & Schneider auth. Home automation |
+| FlowRight Plumbing Solutions | Plumbing | Hubballi | ★★★★★ | — | Best plumbing crew. Jaquar certified |
+| ColourCraft Paints & Coatings | Paint | Hubballi | ★★★★ | — | Asian Paints & Berger authorised |
+| North Karnataka Steel Traders | Steel | Hubballi | ★★★★ | Yes | TMT bars. Same-day delivery |
 | Dharwad Wood Works | Wood | Dharwad | ★★★★★ | — | Premium teak & sal. Custom frames |
-| Crystal Glass & Aluminium | Glass | Hubbali | ★★★ | Yes | Standard work. Premium via Belagavi |
+| Crystal Glass & Aluminium | Glass | Hubballi | ★★★ | Yes | Standard work. Premium via Belagavi |
 
 ---
 
@@ -391,7 +391,7 @@ All 5 roles have real Clerk accounts for persona-based demos:
 **URL:** `/ai-estimator`
 
 **Show:**
-- Input: Residential, 1800 sqft, Premium, Hubbali, 2 floors
+- Input: Residential, 1800 sqft, Premium, Hubballi, 2 floors
 - Output: ₹36-40L breakdown by category (structure, plumbing, electrical, etc.) with GST
 - "Create Project" button
 
@@ -457,7 +457,7 @@ One desk for everything:
 ### Why ArchDesk Wins
 1. **India-first** — INR (₹ lakhs/crores), GST, UPI, Indian phone numbers
 2. **Architecture-specific** — Project stages, drawing workflows, milestone billing
-3. **Tier-2 focused** — Built for Hubbali, not Bangalore startups
+3. **Tier-2 focused** — Built for Hubballi, not Bangalore startups
 4. **Client portal** — Magic-link access, no downloads
 5. **AI-powered** — Cost estimation with real Indian construction rates
 6. **SaaS-ready** — Free / Pro / Enterprise tiers with feature gating

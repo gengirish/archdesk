@@ -78,9 +78,9 @@ describe("vendor schema", () => {
 });
 
 describe("firm settings schema", () => {
-  it("treats a placeholder phone as not set (stored as empty string)", () => {
-    expect(firmUpdateSchema.parse({ phone: "—" }).phone).toBe("");
-    expect(firmUpdateSchema.parse({ phone: "" }).phone).toBe("");
+  it("treats a placeholder phone as not set (stored as null)", () => {
+    expect(firmUpdateSchema.parse({ phone: "—" }).phone).toBeNull();
+    expect(firmUpdateSchema.parse({ phone: "" }).phone).toBeNull();
     expect(firmUpdateSchema.parse({ phone: "+91 98765 43210" }).phone).toBe("9876543210");
   });
   it("validates GSTIN, email and brand colour", () => {

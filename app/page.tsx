@@ -76,7 +76,7 @@ export default function LandingPage() {
       <section className="mx-auto max-w-6xl px-6 pb-20 pt-24">
         <div className="mx-auto max-w-3xl text-center">
           <div className="mb-6 inline-flex items-center rounded-full border border-border/60 bg-secondary/50 px-4 py-1.5 text-xs text-muted-foreground">
-            Built for architects in Hubbali, Karnataka
+            Built for architects in Hubballi, Karnataka
           </div>
           <h1 className="text-4xl font-medium tracking-tight text-foreground sm:text-5xl md:text-6xl">
             Run your architecture firm{" "}
@@ -173,7 +173,7 @@ export default function LandingPage() {
               ArchDesk
             </div>
             <p className="text-xs text-muted-foreground">
-              Built for Tier-2 India &middot; Hubbali, Karnataka
+              Built for Tier-2 India &middot; Hubballi, Karnataka
             </p>
           </div>
           <div className="mt-4 flex items-center justify-center gap-1.5 border-t border-border/30 pt-4">

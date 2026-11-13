@@ -27,9 +27,9 @@ test.describe("Landing Page", () => {
     ).toBeVisible();
   });
 
-  test("renders the Hubbali badge", async ({ page }) => {
+  test("renders the Hubballi badge", async ({ page }) => {
     await expect(
-      page.getByText("Built for architects in Hubbali, Karnataka")
+      page.getByText("Built for architects in Hubballi, Karnataka")
     ).toBeVisible();
   });
 

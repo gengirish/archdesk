@@ -15,30 +15,7 @@ export function projectTypeLabel(t: string | null | undefined): string {
   return t.charAt(0) + t.slice(1).toLowerCase();
 }
 
-/** "11 Nov 2026, 3:05 pm" */
-export function formatDateTime(value: Date | string): string {
-  const d = new Date(value);
-  const date = new Intl.DateTimeFormat("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(d);
-  const time = new Intl.DateTimeFormat("en-IN", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  }).format(d);
-  return `${date}, ${time}`;
-}
-
-/** "11 Nov 2026" */
-export function formatDay(value: Date | string): string {
-  return new Intl.DateTimeFormat("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(value));
-}
+export { formatDateTime, formatDate as formatDay } from "@/lib/utils";
 
 /** Whole-day comparison so "today" counts as due, not overdue. */
 export function isFollowUpOverdue(value: Date | string | null | undefined, now = new Date()): boolean {
